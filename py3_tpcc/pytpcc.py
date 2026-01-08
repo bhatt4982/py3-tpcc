@@ -5,26 +5,37 @@ import argparse
 import logging
 import os
 import sys
+import time
+
+from py3_tpcc.results import Results
 
 # Ensure we can import py3_tpcc when running as a script
 if __name__ == "__main__" and __package__ is None:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import modules to trigger registration
-from py3_tpcc.drivers.registry import getDrivers
+from py3_tpcc.drivers.registry import get_driver_class, get_drivers
 import py3_tpcc.drivers.spannerdriver  # noqa: F401
 import py3_tpcc.drivers.sqlitedriver  # noqa: F401
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format=(
+        "%(asctime)s [%(funcName)s:%(lineno)03d] %(levelname)-5s: %(message)s"
+    ),
+    datefmt="%m-%d-%Y %H:%M:%S",
+    stream=sys.stdout,
+)
 
 
-def main():
+def setup_argument_parser():
     parser = argparse.ArgumentParser(
         description="Python TPC-C Benchmark Driver"
     )
 
     # Dynamic choices for positional argument
-    available_drivers = getDrivers()
+    available_drivers = get_drivers()
     drivers_str = (
         ", ".join(available_drivers) if available_drivers else "None found"
     )
@@ -133,15 +144,55 @@ def main():
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def create_driver_class(name):
+    full_name = "%sDriver" % name.title()
+    mod = __import__(
+        "drivers.%s" % full_name.lower(), globals(), locals(), [full_name]
+    )
+    klass = getattr(mod, full_name)
+    return klass
+
+
+def load_data(driverClass, args, config):
+    pass
+
+
+def execute_workload(driverClass, args, config) -> Results:
+    return Results()
+
+
+def main():
+
+    args = setup_argument_parser()
 
     if args.debug:
         logger.setLevel(logging.DEBUG)
         logger.debug("Debug logging enabled")
 
-    # For verification/stub purposes
     logger.info(f"Selected System: {args.system}")
     logger.info(f"Configuration: {args}")
+
+    driverClass = get_driver_class(args["system"])
+    assert driverClass is not None, "Failed to find '%s' class" % args["system"]
+    driver = driverClass(args["ddl"])
+    assert driver is not None, "Failed to create '%s' driver" % args["system"]
+
+    # Load Data
+    load_time = None
+    if not args["no_load"]:
+        logging.info("Loading TPC-C benchmark data using %s" % (driver))
+        load_start = time.time()
+        load_data(driverClass, args, None)
+        load_time = time.time() - load_start
+
+    # Execute Workload
+    if not args["no_execute"]:
+        results = execute_workload(driverClass, args, None)
+        assert results
+        print(results.show(load_time))
 
 
 if __name__ == "__main__":

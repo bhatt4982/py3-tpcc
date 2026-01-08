@@ -9,11 +9,11 @@ def register_driver(name):
     return decorator
 
 
-def getDriverClass(name):
+def get_driver_class(name):
     if name in DRIVER_REGISTRY:
         return DRIVER_REGISTRY[name]
     return None
 
 
-def getDrivers():
+def get_drivers():
     return list(DRIVER_REGISTRY.keys())
