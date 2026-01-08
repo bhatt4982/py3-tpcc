@@ -94,3 +94,25 @@ def integration(session):
         *test_paths,
         env={},
     )
+
+
+@nox.session(python=DEFAULT_PYTHON_VERSION)
+def build(session):
+    """Build the package."""
+    session.install("build", "setuptools", "wheel")
+    session.run("python", "-m", "build", "--no-isolation")
+
+
+@nox.session(python=DEFAULT_PYTHON_VERSION)
+def install(session):
+    """Install the package."""
+    session.install("setuptools", "wheel")
+    session.install(".", "--no-build-isolation")
+
+
+@nox.session(python=DEFAULT_PYTHON_VERSION)
+def run(session):
+    """Run the driver."""
+    session.install("setuptools", "wheel")
+    session.install(".", "--no-build-isolation")
+    session.run("python", "py3_tpcc/pytpcc.py", *session.posargs)
