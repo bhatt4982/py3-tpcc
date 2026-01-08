@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import asyncio
 import logging
 import os
 import sys
@@ -156,15 +157,26 @@ def create_driver_class(name):
     return klass
 
 
-def load_data(driverClass, args, config):
+async def _load():
     pass
 
 
-def execute_workload(driverClass, args, config) -> Results:
+async def load_data(driverClass, args, config):
+    tasks = [_load() for _ in range(args.clients)]
+    await asyncio.gather(*tasks)
+
+
+async def _execute():
+    pass
+
+
+async def execute_workload(driverClass, args, config) -> Results:
+    tasks = [_execute() for _ in range(args.clients)]
+    await asyncio.gather(*tasks)
     return Results()
 
 
-def main():
+async def main():
 
     args = setup_argument_parser()
 
@@ -175,25 +187,25 @@ def main():
     logger.info(f"Selected System: {args.system}")
     logger.info(f"Configuration: {args}")
 
-    driverClass = get_driver_class(args["system"])
-    assert driverClass is not None, "Failed to find '%s' class" % args["system"]
-    driver = driverClass(args["ddl"])
-    assert driver is not None, "Failed to create '%s' driver" % args["system"]
+    driverClass = get_driver_class(args.system)
+    assert driverClass is not None, "Failed to find '%s' class" % args.system
+    driver = driverClass(args.system, args.ddl)
+    assert driver is not None, "Failed to create '%s' driver" % args.system
 
     # Load Data
     load_time = None
-    if not args["no_load"]:
+    if not args.no_load:
         logging.info("Loading TPC-C benchmark data using %s" % (driver))
         load_start = time.time()
-        load_data(driverClass, args, None)
+        await load_data(driverClass, args, None)
         load_time = time.time() - load_start
 
     # Execute Workload
-    if not args["no_execute"]:
-        results = execute_workload(driverClass, args, None)
+    if not args.no_execute:
+        results = await execute_workload(driverClass, args, None)
         assert results
         print(results.show(load_time))
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
