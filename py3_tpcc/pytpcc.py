@@ -51,7 +51,9 @@ def setup_argument_parser():
 
     # Optional Arguments
     parser.add_argument(
-        "--config", type=str, help="Path to the driver configuration file."
+        "--config",
+        type=str,
+        help="Path to the driver configuration file(format: toml).",
     )
 
     parser.add_argument(
@@ -161,7 +163,7 @@ async def _load():
     pass
 
 
-async def load_data(driverClass, args, config):
+async def load_data(driver, args):
     tasks = [_load() for _ in range(args.clients)]
     await asyncio.gather(*tasks)
 
@@ -170,10 +172,15 @@ async def _execute():
     pass
 
 
-async def execute_workload(driverClass, args, config) -> Results:
+async def execute_workload(driver, args) -> Results:
     tasks = [_execute() for _ in range(args.clients)]
     await asyncio.gather(*tasks)
     return Results()
+
+
+def print_config(driver):
+    print(driver.format_config(driver.config))
+    print()
 
 
 async def main():
@@ -192,17 +199,31 @@ async def main():
     driver = driverClass(args.system, args.ddl)
     assert driver is not None, "Failed to create '%s' driver" % args.system
 
+    # Load default configuration
+    if args.system == "sqlite":
+        driver.make_default_config()
+
+    # Load Config
+    if args.config:
+        logger.info(f"Loading configuration from {args.config}")
+        driver.load_config(args.config)
+
+    # --print-config: Print Config and exit
+    if args.print_config:
+        print_config(driver)
+        sys.exit(0)
+
     # Load Data
     load_time = None
     if not args.no_load:
         logging.info("Loading TPC-C benchmark data using %s" % (driver))
         load_start = time.time()
-        await load_data(driverClass, args, None)
+        await load_data(driver, args)
         load_time = time.time() - load_start
 
     # Execute Workload
     if not args.no_execute:
-        results = await execute_workload(driverClass, args, None)
+        results = await execute_workload(driver, args)
         assert results
         print(results.show(load_time))
 

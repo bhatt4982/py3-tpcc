@@ -11,6 +11,11 @@ BLACK_VERSION = "black[jupyter]>=23.7.0,<25.11.0"
 ISORT_VERSION = "isort>=5.11.0,<7.0.0"
 LINT_PATHS = ["py3_tpcc", "tests", "noxfile.py"]
 
+STANDARD_DEPENDENCIES = [
+    "tomli; python_version < '3.11'",
+    "tomli-w",
+]
+
 TEST_STANDARD_DEPENDENCIES = [
     "pytest",
 ]
@@ -61,7 +66,7 @@ def lint(session):
 @nox.session(python=DEFAULT_PYTHON_VERSION)
 def unit(session):
     """Run unit tests."""
-    session.install(*TEST_STANDARD_DEPENDENCIES)
+    session.install(*STANDARD_DEPENDENCIES, *TEST_STANDARD_DEPENDENCIES)
     session.install("-e", ".")
 
     test_paths = (
@@ -79,7 +84,7 @@ def unit(session):
 @nox.session(python=DEFAULT_PYTHON_VERSION)
 def integration(session):
     """Run integration tests."""
-    session.install(*TEST_STANDARD_DEPENDENCIES)
+    session.install(*STANDARD_DEPENDENCIES, *TEST_STANDARD_DEPENDENCIES)
     session.install("-e", ".")
 
     test_paths = (
@@ -99,6 +104,7 @@ def integration(session):
 @nox.session(python=DEFAULT_PYTHON_VERSION)
 def build(session):
     """Build the package."""
+    session.install(*STANDARD_DEPENDENCIES)
     session.install("build", "setuptools", "wheel")
     session.run("python", "-m", "build", "--no-isolation")
 
@@ -106,6 +112,7 @@ def build(session):
 @nox.session(python=DEFAULT_PYTHON_VERSION)
 def install(session):
     """Install the package."""
+    session.install(*STANDARD_DEPENDENCIES)
     session.install("setuptools", "wheel")
     session.install(".", "--no-build-isolation")
 
@@ -113,6 +120,7 @@ def install(session):
 @nox.session(python=DEFAULT_PYTHON_VERSION)
 def run(session):
     """Run the driver."""
+    session.install(*STANDARD_DEPENDENCIES)
     session.install("setuptools", "wheel")
     session.install(".", "--no-build-isolation")
     session.run("python", "py3_tpcc/pytpcc.py", *session.posargs)
