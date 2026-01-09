@@ -48,3 +48,42 @@ class AbstractDriver(abc.ABC):
             f"# Created {datetime.now()}\n\n"
         )
         return header + tomli_w.dumps(config)
+
+    def load_start(self):
+        """Optional callback to indicate to the driver that
+        the data loading phase is about to begin."""
+        return None
+
+    def load_end(self):
+        """Optional callback to indicate to the driver that
+        the data loading phase is finished."""
+        return None
+
+    def execute_start(self):
+        """Optional callback before the execution phase starts"""
+        return None
+
+    def execute_end(self):
+        """Callback after the execution phase finishes"""
+        return None
+
+    def load_item_end(self):
+        """Optional callback to indicate to the driver that
+        the ITEM data has been passed to the driver."""
+        return None
+
+    def load_warehouse_end(self, w_id):
+        """Optional callback to indicate to the driver that
+        the data for the given warehouse is finished."""
+        return None
+
+    def load_district_end(self, w_id, d_id):
+        """Optional callback to indicate to the driver that
+        the data for the given district is finished."""
+        return None
+
+    def load_tuples(self, table_name, tuples):
+        """Load a list of tuples into the target table"""
+        raise NotImplementedError(
+            "%s does not implement loadTuples" % (self.driver_name)
+        )

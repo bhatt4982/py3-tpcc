@@ -8,8 +8,11 @@ import multiprocessing
 import os
 import sys
 import time
+import traceback
 
 from py3_tpcc.results import Results
+from py3_tpcc.runtime.executor import Executor
+from py3_tpcc.runtime.loader import Loader
 from py3_tpcc.scaleparameters import ScaleParameters
 
 # Ensure we can import py3_tpcc when running as a script
@@ -161,18 +164,25 @@ def create_driver_class(name):
     return klass
 
 
-async def _load():
-    pass
-
-
 async def load_data(driver, args, scale_parameters):
+    assert driver is not None
     logging.debug("Creating client pool with %d processes" % args.clients)
     pool = multiprocessing.Pool(args.clients)
-    # debug = logging.getLogger().isEnabledFor(logging.DEBUG)
+
+    # Split the warehouses into chunks
+    w_ids = [[] for _ in range(args.clients)]
+    for w_id in range(
+        scale_parameters.starting_warehouse,
+        scale_parameters.ending_warehouse + 1,
+    ):
+        idx = w_id % args.clients
+        w_ids[idx].append(w_id)
 
     loader_results = []
     for i in range(args.clients):
-        r = pool.apply_async(_load)
+        r = pool.apply_async(
+            _loader_func, (driver, scale_parameters, args, w_ids[i])
+        )
         loader_results.append(r)
 
     pool.close()
@@ -180,14 +190,41 @@ async def load_data(driver, args, scale_parameters):
     pool.join()
 
 
-async def _execute():
-    pass
+def _loader_func(driver, scale_parameters, args, w_ids):
+    logging.debug(
+        "Starting client execution: %s [warehouses=%d]" % (driver, len(w_ids))
+    )
+    try:
+        need_load_items = 1 in w_ids
+        loader = Loader(driver, scale_parameters, w_ids, need_load_items)
+        driver.load_start()
+        loader.load()
+        driver.load_end()
+    except KeyboardInterrupt:
+        return -1
+    except (Exception, AssertionError) as ex:
+        logging.warn("Failed to load data: %s" % (ex))
+        traceback.print_exc(file=sys.stdout)
+        raise
 
 
 async def execute_workload(driver, args, scale_parameters) -> Results:
-    tasks = [_execute() for _ in range(args.clients)]
+    assert driver is not None
+    tasks = [
+        _executor_func(driver, args, scale_parameters)
+        for _ in range(args.clients)
+    ]
     await asyncio.gather(*tasks)
     return Results()
+
+
+async def _executor_func(driver, args, scale_parameters):
+    logging.debug("Starting client execution: %s" % driver)
+    e = Executor(driver, scale_parameters, stop_on_error=args.stop_on_error)
+    driver.execute_start()
+    results = e.run(args.duration)
+    driver.execute_end()
+    return results
 
 
 def print_config(driver):
