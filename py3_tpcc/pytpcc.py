@@ -166,17 +166,17 @@ async def _load():
 
 
 async def load_data(driver, args, scale_parameters):
-    logging.debug("Creating client pool with %d processes" % args["clients"])
-    pool = multiprocessing.Pool(args["clients"])
+    logging.debug("Creating client pool with %d processes" % args.clients)
+    pool = multiprocessing.Pool(args.clients)
     # debug = logging.getLogger().isEnabledFor(logging.DEBUG)
 
     loader_results = []
-    for i in range(args["clients"]):
+    for i in range(args.clients):
         r = pool.apply_async(_load)
         loader_results.append(r)
 
     pool.close()
-    logging.debug("Waiting for %d loaders to finish" % args["clients"])
+    logging.debug("Waiting for %d loaders to finish" % args.clients)
     pool.join()
 
 
