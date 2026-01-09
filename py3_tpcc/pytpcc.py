@@ -10,6 +10,7 @@ import sys
 import time
 
 from py3_tpcc.results import Results
+from py3_tpcc.scaleparameters import ScaleParameters
 
 # Ensure we can import py3_tpcc when running as a script
 if __name__ == "__main__" and __package__ is None:
@@ -164,7 +165,7 @@ async def _load():
     pass
 
 
-async def load_data(driver, args):
+async def load_data(driver, args, scale_parameters):
     logging.debug("Creating client pool with %d processes" % args["clients"])
     pool = multiprocessing.Pool(args["clients"])
     # debug = logging.getLogger().isEnabledFor(logging.DEBUG)
@@ -183,7 +184,7 @@ async def _execute():
     pass
 
 
-async def execute_workload(driver, args) -> Results:
+async def execute_workload(driver, args, scale_parameters) -> Results:
     tasks = [_execute() for _ in range(args.clients)]
     await asyncio.gather(*tasks)
     return Results()
@@ -223,17 +224,20 @@ async def main():
         print_config(driver)
         sys.exit(0)
 
+    scale_parameters = ScaleParameters.makeWithScaleFactor(
+        args.warehouses, args.scalefactor
+    )
     # Load Data
     load_time = None
     if not args.no_load:
         logging.info("Loading TPC-C benchmark data using %s" % (driver))
         load_start = time.time()
-        await load_data(driver, args)
+        await load_data(driver, args, scale_parameters)
         load_time = time.time() - load_start
 
     # Execute Workload
     if not args.no_execute:
-        results = await execute_workload(driver, args)
+        results = await execute_workload(driver, args, scale_parameters)
         assert results
         print(results.show(load_time))
 
