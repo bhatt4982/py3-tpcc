@@ -1,7 +1,3 @@
-from py3_tpcc.runtime.executor import Executor
-from py3_tpcc.runtime.loader import Loader
-
-__all__ = ["Loader", "Executor"]
 #!/usr/bin/env python
 # -----------------------------------------------------------------------
 # Copyright (C) 2011
@@ -28,3 +24,7 @@ __all__ = ["Loader", "Executor"]
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
+from py3_tpcc.runtime.executor import Executor
+from py3_tpcc.runtime.loader import Loader
+
+__all__ = ["Loader", "Executor"]
