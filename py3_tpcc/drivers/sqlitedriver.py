@@ -34,6 +34,7 @@ import os
 from pprint import pformat
 import sqlite3
 import subprocess
+from typing import Any, Dict, List, Optional, Tuple
 
 from py3_tpcc import constants
 from py3_tpcc.drivers.abstractdriver import AbstractDriver
@@ -101,60 +102,61 @@ class SQLiteDriver(AbstractDriver):
 
     CONFIG_FILE = "sqlite.toml"
 
-    def make_default_config(self):
+    def make_default_config(self) -> Dict[str, Any]:
         config_path = os.path.join(
             os.path.dirname(__file__), SQLiteDriver.CONFIG_FILE
         )
         if os.path.isfile(config_path):
-            super(SQLiteDriver, self).load_config(config_path)
+            super().load_config(config_path)
         return self.config
 
-    def load_config(self, config):
+    def load_config(self, config: Any) -> Optional[Dict[str, Any]]:
         if isinstance(config, dict):
             self.config.update(config)
         elif isinstance(config, str) and os.path.isfile(config):
-            super(SQLiteDriver, self).load_config(config)
+            super().load_config(config)
 
         self.database = str(self.config.get("database", "tpcc.db"))
 
         if self.config.get("reset") and os.path.exists(self.database):
-            logging.debug("Deleting database '%s'" % self.database)
+            logging.debug(f"Deleting database '{self.database}'")
             os.unlink(self.database)
 
-        if os.path.exists(self.database) is False:
-            logging.debug("Loading DDL file '%s'" % (self.ddl))
-            cmd = "sqlite3 %s < %s" % (self.database, self.ddl)
+        if not os.path.exists(self.database):
+            logging.debug(f"Loading DDL file '{self.ddl}'")
+            cmd = f"sqlite3 {self.database} < {self.ddl}"
             (result, output) = subprocess.getstatusoutput(cmd)
-            assert result == 0, cmd + "\n" + output
+            assert result == 0, f"{cmd}\n{output}"
 
         self.conn = sqlite3.connect(self.database)
         self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
+        return self.config
 
-    def __init__(self, type, ddl):
-        super(SQLiteDriver, self).__init__("sqlite", ddl)
-        self.database = None
-        self.conn = None
-        self.cursor = None
+    def __init__(self, name: str, ddl: str):
+        super().__init__("sqlite", ddl)
+        self.database: Optional[str] = None
+        self.conn: Optional[sqlite3.Connection] = None
+        self.cursor: Optional[sqlite3.Cursor] = None
 
-    def load_tuples(self, tableName, tuples):
+    def load_tuples(self, table_name: str, tuples: List[Any]) -> None:
         if len(tuples) == 0:
             return
 
         p = ["?"] * len(tuples[0])
-        sql = "INSERT INTO %s VALUES (%s)" % (tableName, ",".join(p))
+        sql = f"INSERT INTO {table_name} VALUES ({','.join(p)})"
         self.cursor.executemany(sql, tuples)
 
         logging.debug(
-            "Loaded %d tuples for tableName %s" % (len(tuples), tableName)
+            f"Loaded {len(tuples)} tuples for table_name {table_name}"
         )
         return
 
-    def load_finish(self):
+    def load_finish(self) -> None:
         logging.info("Commiting changes to database")
         self.conn.commit()
 
-    def do_delivery(self, params):
+    def do_delivery(self, params: Dict[str, Any]) -> List[Tuple[int, int]]:
         q = TXN_QUERIES["DELIVERY"]
 
         w_id = params["w_id"]
@@ -167,7 +169,6 @@ class SQLiteDriver(AbstractDriver):
                 self.cursor.execute(q["getNewOrder"], (d_id, w_id))
                 newOrder = self.cursor.fetchone()
                 if newOrder is None:
-                    # No orders for this district: skip it. Note: This must be reported if > 1%
                     continue
                 assert len(newOrder) > 0
                 no_o_id = newOrder[0]
@@ -199,7 +200,7 @@ class SQLiteDriver(AbstractDriver):
 
         return result
 
-    def do_new_order(self, params):
+    def do_new_order(self, params: Dict[str, Any]) -> Optional[List[Any]]:
         q = TXN_QUERIES["NEW_ORDER"]
 
         w_id = params["w_id"]
@@ -216,165 +217,146 @@ class SQLiteDriver(AbstractDriver):
 
         all_local = True
         items = []
-        for i in range(len(i_ids)):
-            # Determine if this is an all local order or not
-            all_local = all_local and i_w_ids[i] == w_id
-            self.cursor.execute(q["getItemInfo"], [i_ids[i]])
-            items.append(self.cursor.fetchone())
-        assert len(items) == len(i_ids)
 
-        # TPCC defines 1% of neworder gives a wrong itemid, causing rollback.
-        # Note that this will happen with 1% of transactions on purpose.
-        for item in items:
-            if len(item) == 0:
-                # TODO Abort here!
-                return
+        try:
+            with self.conn:
+                for i in range(len(i_ids)):
+                    all_local = all_local and i_w_ids[i] == w_id
+                    self.cursor.execute(q["getItemInfo"], [i_ids[i]])
+                    items.append(self.cursor.fetchone())
+                assert len(items) == len(i_ids)
 
-        # ----------------
-        # Collect Information from WAREHOUSE, DISTRICT, and CUSTOMER
-        # ----------------
-        self.cursor.execute(q["getWarehouseTaxRate"], [w_id])
-        w_tax = self.cursor.fetchone()[0]
+                for item in items:
+                    if not item or len(item) == 0:
+                        self.conn.rollback()
+                        return None
 
-        self.cursor.execute(q["getDistrict"], [d_id, w_id])
-        district_info = self.cursor.fetchone()
-        d_tax = district_info[0]
-        d_next_o_id = district_info[1]
+                self.cursor.execute(q["getWarehouseTaxRate"], [w_id])
+                w_tax = self.cursor.fetchone()[0]
 
-        self.cursor.execute(q["getCustomer"], [w_id, d_id, c_id])
-        customer_info = self.cursor.fetchone()
-        c_discount = customer_info[0]
+                self.cursor.execute(q["getDistrict"], [d_id, w_id])
+                district_info = self.cursor.fetchone()
+                d_tax = district_info[0]
+                d_next_o_id = district_info[1]
 
-        # ----------------
-        # Insert Order Information
-        # ----------------
-        ol_cnt = len(i_ids)
-        o_carrier_id = constants.NULL_CARRIER_ID
+                self.cursor.execute(q["getCustomer"], [w_id, d_id, c_id])
+                customer_info = self.cursor.fetchone()
+                c_discount = customer_info[0]
 
-        self.cursor.execute(
-            q["incrementNextOrderId"], [d_next_o_id + 1, d_id, w_id]
-        )
-        self.cursor.execute(
-            q["createOrder"],
-            [
-                d_next_o_id,
-                d_id,
-                w_id,
-                c_id,
-                o_entry_d,
-                o_carrier_id,
-                ol_cnt,
-                all_local,
-            ],
-        )
-        self.cursor.execute(q["createNewOrder"], [d_next_o_id, d_id, w_id])
+                ol_cnt = len(i_ids)
+                o_carrier_id = constants.NULL_CARRIER_ID
 
-        # ----------------
-        # Insert Order Item Information
-        # ----------------
-        item_data = []
-        total = 0
-        for i in range(len(i_ids)):
-            ol_number = i + 1
-            ol_supply_w_id = i_w_ids[i]
-            ol_i_id = i_ids[i]
-            ol_quantity = i_qtys[i]
-
-            itemInfo = items[i]
-            i_name = itemInfo[1]
-            i_data = itemInfo[2]
-            i_price = itemInfo[0]
-
-            self.cursor.execute(
-                q["getStockInfo"] % (d_id), [ol_i_id, ol_supply_w_id]
-            )
-            stockInfo = self.cursor.fetchone()
-            if len(stockInfo) == 0:
-                logging.warn(
-                    "No STOCK record for (ol_i_id=%d, ol_supply_w_id=%d)"
-                    % (ol_i_id, ol_supply_w_id)
+                self.cursor.execute(
+                    q["incrementNextOrderId"], [d_next_o_id + 1, d_id, w_id]
                 )
-                continue
-            s_quantity = stockInfo[0]
-            s_ytd = stockInfo[2]
-            s_order_cnt = stockInfo[3]
-            s_remote_cnt = stockInfo[4]
-            s_data = stockInfo[1]
-            s_dist_xx = stockInfo[
-                5
-            ]  # Fetches data from the s_dist_[d_id] column
+                self.cursor.execute(
+                    q["createOrder"],
+                    [
+                        d_next_o_id,
+                        d_id,
+                        w_id,
+                        c_id,
+                        o_entry_d,
+                        o_carrier_id,
+                        ol_cnt,
+                        all_local,
+                    ],
+                )
+                self.cursor.execute(
+                    q["createNewOrder"], [d_next_o_id, d_id, w_id]
+                )
 
-            # Update stock
-            s_ytd += ol_quantity
-            if s_quantity >= ol_quantity + 10:
-                s_quantity = s_quantity - ol_quantity
-            else:
-                s_quantity = s_quantity + 91 - ol_quantity
-            s_order_cnt += 1
+                item_data = []
+                total = 0
+                for i in range(len(i_ids)):
+                    ol_number = i + 1
+                    ol_supply_w_id = i_w_ids[i]
+                    ol_i_id = i_ids[i]
+                    ol_quantity = i_qtys[i]
 
-            if ol_supply_w_id != w_id:
-                s_remote_cnt += 1
+                    itemInfo = items[i]
+                    i_name = itemInfo[1]
+                    i_data = itemInfo[2]
+                    i_price = itemInfo[0]
 
-            self.cursor.execute(
-                q["updateStock"],
-                [
-                    s_quantity,
-                    s_ytd,
-                    s_order_cnt,
-                    s_remote_cnt,
-                    ol_i_id,
-                    ol_supply_w_id,
-                ],
-            )
+                    self.cursor.execute(
+                        q["getStockInfo"] % (d_id), [ol_i_id, ol_supply_w_id]
+                    )
+                    stockInfo = self.cursor.fetchone()
+                    if len(stockInfo) == 0:
+                        logging.warning(
+                            f"No STOCK record for (ol_i_id={ol_i_id}, ol_supply_w_id={ol_supply_w_id})"
+                        )
+                        continue
+                    s_quantity = stockInfo[0]
+                    s_ytd = stockInfo[2]
+                    s_order_cnt = stockInfo[3]
+                    s_remote_cnt = stockInfo[4]
+                    s_data = stockInfo[1]
+                    s_dist_xx = stockInfo[5]
 
-            if (
-                i_data.find(constants.ORIGINAL_STRING) != -1
-                and s_data.find(constants.ORIGINAL_STRING) != -1
-            ):
-                brand_generic = "B"
-            else:
-                brand_generic = "G"
+                    s_ytd += ol_quantity
+                    if s_quantity >= ol_quantity + 10:
+                        s_quantity = s_quantity - ol_quantity
+                    else:
+                        s_quantity = s_quantity + 91 - ol_quantity
+                    s_order_cnt += 1
 
-            # Transaction profile states to use "ol_quantity * i_price"
-            ol_amount = ol_quantity * i_price
-            total += ol_amount
+                    if ol_supply_w_id != w_id:
+                        s_remote_cnt += 1
 
-            self.cursor.execute(
-                q["createOrderLine"],
-                [
-                    d_next_o_id,
-                    d_id,
-                    w_id,
-                    ol_number,
-                    ol_i_id,
-                    ol_supply_w_id,
-                    o_entry_d,
-                    ol_quantity,
-                    ol_amount,
-                    s_dist_xx,
-                ],
-            )
+                    self.cursor.execute(
+                        q["updateStock"],
+                        [
+                            s_quantity,
+                            s_ytd,
+                            s_order_cnt,
+                            s_remote_cnt,
+                            ol_i_id,
+                            ol_supply_w_id,
+                        ],
+                    )
 
-            # Add the info to be returned
-            item_data.append(
-                (i_name, s_quantity, brand_generic, i_price, ol_amount)
-            )
+                    if (
+                        i_data.find(constants.ORIGINAL_STRING) != -1
+                        and s_data.find(constants.ORIGINAL_STRING) != -1
+                    ):
+                        brand_generic = "B"
+                    else:
+                        brand_generic = "G"
 
-        # Commit!
-        self.conn.commit()
+                    ol_amount = ol_quantity * i_price
+                    total += ol_amount
 
-        # Adjust the total for the discount
-        # print "c_discount:", c_discount, type(c_discount)
-        # print "w_tax:", w_tax, type(w_tax)
-        # print "d_tax:", d_tax, type(d_tax)
+                    self.cursor.execute(
+                        q["createOrderLine"],
+                        [
+                            d_next_o_id,
+                            d_id,
+                            w_id,
+                            ol_number,
+                            ol_i_id,
+                            ol_supply_w_id,
+                            o_entry_d,
+                            ol_quantity,
+                            ol_amount,
+                            s_dist_xx,
+                        ],
+                    )
+
+                    item_data.append(
+                        (i_name, s_quantity, brand_generic, i_price, ol_amount)
+                    )
+
+        except Exception as e:
+            raise e
+
         total *= (1 - c_discount) * (1 + w_tax + d_tax)
-
-        # Pack up values the client is missing (see TPC-C 2.4.3.5)
         misc = [(w_tax, d_tax, d_next_o_id, total)]
 
         return [customer_info, misc, item_data]
 
-    def do_order_status(self, params):
+    def do_order_status(self, params: Dict[str, Any]) -> List[Any]:
         q = TXN_QUERIES["ORDER_STATUS"]
 
         w_id = params["w_id"]
@@ -414,10 +396,7 @@ class SQLiteDriver(AbstractDriver):
 
         return [customer, order, orderLines]
 
-    # ----------------------------------------------
-    # doPayment
-    # ----------------------------------------------
-    def do_payment(self, params):
+    def do_payment(self, params: Dict[str, Any]) -> List[Any]:
         q = TXN_QUERIES["PAYMENT"]
 
         w_id = params["w_id"]
@@ -495,7 +474,7 @@ class SQLiteDriver(AbstractDriver):
                     ),
                 )
 
-            h_data = "%s    %s" % (warehouse["W_NAME"], district["D_NAME"])
+            h_data = f"{warehouse['W_NAME']}    {district['D_NAME']}"
             self.cursor.execute(
                 q["insertHistory"],
                 (c_id, c_d_id, c_w_id, d_id, w_id, h_date, h_amount, h_data),
@@ -503,26 +482,23 @@ class SQLiteDriver(AbstractDriver):
 
         return [warehouse, district, customer]
 
-    # ----------------------------------------------
-    # doStockLevel
-    # ----------------------------------------------
-    def do_stock_level(self, params):
+    def do_stock_level(self, params: Dict[str, Any]) -> int:
         q = TXN_QUERIES["STOCK_LEVEL"]
 
         w_id = params["w_id"]
         d_id = params["d_id"]
         threshold = params["threshold"]
 
-        self.cursor.execute(q["getOId"], [w_id, d_id])
-        result = self.cursor.fetchone()
-        assert result
-        o_id = result[0]
+        with self.conn:
+            self.cursor.execute(q["getOId"], [w_id, d_id])
+            result = self.cursor.fetchone()
+            assert result
+            o_id = result[0]
 
-        self.cursor.execute(
-            q["getStockCount"], [w_id, d_id, o_id, (o_id - 20), w_id, threshold]
-        )
-        result = self.cursor.fetchone()
-
-        self.conn.commit()
+            self.cursor.execute(
+                q["getStockCount"],
+                [w_id, d_id, o_id, (o_id - 20), w_id, threshold],
+            )
+            result = self.cursor.fetchone()
 
         return int(result[0])

@@ -64,7 +64,7 @@ NOTIFY_PHASE_START_PATH = "/data/workdir/src/flamegraph/notify_phase_start.py"
 NOTIFY_PHASE_END_PATH = "/data/workdir/src/flamegraph/notify_phase_end.py"
 
 
-def notifyDSIOfPhaseStart(phasename):
+def notifyDSIOfPhaseStart(phasename: str) -> None:
     if os.path.isfile(NOTIFY_PHASE_START_PATH):
         output = subprocess.run(
             ["python3", NOTIFY_PHASE_START_PATH, phasename], capture_output=True
@@ -75,7 +75,7 @@ def notifyDSIOfPhaseStart(phasename):
             )
 
 
-def notifyDSIOfPhaseEnd(phasename):
+def notifyDSIOfPhaseEnd(phasename: str) -> None:
     if os.path.isfile(NOTIFY_PHASE_END_PATH):
         output = subprocess.run(
             ["python3", NOTIFY_PHASE_END_PATH, phasename], capture_output=True
@@ -86,7 +86,7 @@ def notifyDSIOfPhaseEnd(phasename):
             )
 
 
-def setup_argument_parser():
+def setup_argument_parser() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Python3 implementation of TPC-C Benchmark..."
     )
@@ -240,12 +240,12 @@ def setup_argument_parser():
     return parser.parse_args()
 
 
-def print_config(driver):
+def print_config(driver) -> None:
     print(driver.format_config(driver.config))
     print()
 
 
-async def main():
+async def main() -> None:
 
     args = setup_argument_parser()
 
