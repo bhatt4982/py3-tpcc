@@ -41,47 +41,49 @@ from py3_tpcc.drivers.registry import register_driver
 
 TXN_QUERIES = {
     "DELIVERY": {
-        "getNewOrder": "SELECT NO_O_ID FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID > -1 LIMIT 1",  #
-        "deleteNewOrder": "DELETE FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID = ?",  # d_id, w_id, no_o_id
-        "getCId": "SELECT O_C_ID FROM ORDERS WHERE O_ID = ? AND O_D_ID = ? AND O_W_ID = ?",  # no_o_id, d_id, w_id
-        "updateOrders": "UPDATE ORDERS SET O_CARRIER_ID = ? WHERE O_ID = ? AND O_D_ID = ? AND O_W_ID = ?",  # o_carrier_id, no_o_id, d_id, w_id
-        "updateOrderLine": "UPDATE ORDER_LINE SET OL_DELIVERY_D = ? WHERE OL_O_ID = ? AND OL_D_ID = ? AND OL_W_ID = ?",  # o_entry_d, no_o_id, d_id, w_id
-        "sumOLAmount": "SELECT SUM(OL_AMOUNT) FROM ORDER_LINE WHERE OL_O_ID = ? AND OL_D_ID = ? AND OL_W_ID = ?",  # no_o_id, d_id, w_id
-        "updateCustomer": "UPDATE CUSTOMER SET C_BALANCE = C_BALANCE + ? WHERE C_ID = ? AND C_D_ID = ? AND C_W_ID = ?",  # ol_total, c_id, d_id, w_id
+        "getNewOrder": (
+            "SELECT NO_O_ID FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID > -1 LIMIT 1"
+        ),
+        "deleteNewOrder": "DELETE FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID = ?",
+        "getCId": "SELECT O_C_ID FROM ORDERS WHERE O_ID = ? AND O_D_ID = ? AND O_W_ID = ?",
+        "updateOrders": "UPDATE ORDERS SET O_CARRIER_ID = ? WHERE O_ID = ? AND O_D_ID = ? AND O_W_ID = ?",
+        "updateOrderLine": "UPDATE ORDER_LINE SET OL_DELIVERY_D = ? WHERE OL_O_ID = ? AND OL_D_ID = ? AND OL_W_ID = ?",
+        "sumOLAmount": "SELECT SUM(OL_AMOUNT) AS SUM_OL_AMOUNT FROM ORDER_LINE WHERE OL_O_ID = ? AND OL_D_ID = ? AND OL_W_ID = ?",
+        "updateCustomer": "UPDATE CUSTOMER SET C_BALANCE = C_BALANCE + ? WHERE C_ID = ? AND C_D_ID = ? AND C_W_ID = ?",
     },
     "NEW_ORDER": {
-        "getWarehouseTaxRate": "SELECT W_TAX FROM WAREHOUSE WHERE W_ID = ?",  # w_id
-        "getDistrict": "SELECT D_TAX, D_NEXT_O_ID FROM DISTRICT WHERE D_ID = ? AND D_W_ID = ?",  # d_id, w_id
-        "incrementNextOrderId": "UPDATE DISTRICT SET D_NEXT_O_ID = ? WHERE D_ID = ? AND D_W_ID = ?",  # d_next_o_id, d_id, w_id
-        "getCustomer": "SELECT C_DISCOUNT, C_LAST, C_CREDIT FROM CUSTOMER WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?",  # w_id, d_id, c_id
-        "createOrder": "INSERT INTO ORDERS (O_ID, O_D_ID, O_W_ID, O_C_ID, O_ENTRY_D, O_CARRIER_ID, O_OL_CNT, O_ALL_LOCAL) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",  # d_next_o_id, d_id, w_id, c_id, o_entry_d, o_carrier_id, o_ol_cnt, o_all_local
-        "createNewOrder": "INSERT INTO NEW_ORDER (NO_O_ID, NO_D_ID, NO_W_ID) VALUES (?, ?, ?)",  # o_id, d_id, w_id
-        "getItemInfo": "SELECT I_PRICE, I_NAME, I_DATA FROM ITEM WHERE I_ID = ?",  # ol_i_id
-        "getStockInfo": "SELECT S_QUANTITY, S_DATA, S_YTD, S_ORDER_CNT, S_REMOTE_CNT, S_DIST_%02d FROM STOCK WHERE S_I_ID = ? AND S_W_ID = ?",  # d_id, ol_i_id, ol_supply_w_id
-        "updateStock": "UPDATE STOCK SET S_QUANTITY = ?, S_YTD = ?, S_ORDER_CNT = ?, S_REMOTE_CNT = ? WHERE S_I_ID = ? AND S_W_ID = ?",  # s_quantity, s_order_cnt, s_remote_cnt, ol_i_id, ol_supply_w_id
-        "createOrderLine": "INSERT INTO ORDER_LINE (OL_O_ID, OL_D_ID, OL_W_ID, OL_NUMBER, OL_I_ID, OL_SUPPLY_W_ID, OL_DELIVERY_D, OL_QUANTITY, OL_AMOUNT, OL_DIST_INFO) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",  # o_id, d_id, w_id, ol_number, ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, ol_dist_info
+        "getWarehouseTaxRate": "SELECT W_TAX FROM WAREHOUSE WHERE W_ID = ?",
+        "getDistrict": "SELECT D_TAX, D_NEXT_O_ID FROM DISTRICT WHERE D_ID = ? AND D_W_ID = ?",
+        "incrementNextOrderId": "UPDATE DISTRICT SET D_NEXT_O_ID = ? WHERE D_ID = ? AND D_W_ID = ?",
+        "getCustomer": "SELECT C_DISCOUNT, C_LAST, C_CREDIT FROM CUSTOMER WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?",
+        "createOrder": "INSERT INTO ORDERS (O_ID, O_D_ID, O_W_ID, O_C_ID, O_ENTRY_D, O_CARRIER_ID, O_OL_CNT, O_ALL_LOCAL) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "createNewOrder": "INSERT INTO NEW_ORDER (NO_O_ID, NO_D_ID, NO_W_ID) VALUES (?, ?, ?)",
+        "getItemInfo": "SELECT I_PRICE, I_NAME, I_DATA FROM ITEM WHERE I_ID = ?",
+        "getStockInfo": "SELECT S_QUANTITY, S_DATA, S_YTD, S_ORDER_CNT, S_REMOTE_CNT, S_DIST_%02d FROM STOCK WHERE S_I_ID = ? AND S_W_ID = ?",
+        "updateStock": "UPDATE STOCK SET S_QUANTITY = ?, S_YTD = ?, S_ORDER_CNT = ?, S_REMOTE_CNT = ? WHERE S_I_ID = ? AND S_W_ID = ?",
+        "createOrderLine": "INSERT INTO ORDER_LINE (OL_O_ID, OL_D_ID, OL_W_ID, OL_NUMBER, OL_I_ID, OL_SUPPLY_W_ID, OL_DELIVERY_D, OL_QUANTITY, OL_AMOUNT, OL_DIST_INFO) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     },
     "ORDER_STATUS": {
-        "getCustomerByCustomerId": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE FROM CUSTOMER WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?",  # w_id, d_id, c_id
-        "getCustomersByLastName": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE FROM CUSTOMER WHERE C_W_ID = ? AND C_D_ID = ? AND C_LAST = ? ORDER BY C_FIRST",  # w_id, d_id, c_last
-        "getLastOrder": "SELECT O_ID, O_CARRIER_ID, O_ENTRY_D FROM ORDERS WHERE O_W_ID = ? AND O_D_ID = ? AND O_C_ID = ? ORDER BY O_ID DESC LIMIT 1",  # w_id, d_id, c_id
-        "getOrderLines": "SELECT OL_SUPPLY_W_ID, OL_I_ID, OL_QUANTITY, OL_AMOUNT, OL_DELIVERY_D FROM ORDER_LINE WHERE OL_W_ID = ? AND OL_D_ID = ? AND OL_O_ID = ?",  # w_id, d_id, o_id
+        "getCustomerByCustomerId": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE FROM CUSTOMER WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?",
+        "getCustomersByLastName": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE FROM CUSTOMER WHERE C_W_ID = ? AND C_D_ID = ? AND C_LAST = ? ORDER BY C_FIRST",
+        "getLastOrder": "SELECT O_ID, O_CARRIER_ID, O_ENTRY_D FROM ORDERS WHERE O_W_ID = ? AND O_D_ID = ? AND O_C_ID = ? ORDER BY O_ID DESC LIMIT 1",
+        "getOrderLines": "SELECT OL_SUPPLY_W_ID, OL_I_ID, OL_QUANTITY, OL_AMOUNT, OL_DELIVERY_D FROM ORDER_LINE WHERE OL_W_ID = ? AND OL_D_ID = ? AND OL_O_ID = ?",
     },
     "PAYMENT": {
-        "getWarehouse": "SELECT W_NAME, W_STREET_1, W_STREET_2, W_CITY, W_STATE, W_ZIP FROM WAREHOUSE WHERE W_ID = ?",  # w_id
-        "updateWarehouseBalance": "UPDATE WAREHOUSE SET W_YTD = W_YTD + ? WHERE W_ID = ?",  # h_amount, w_id
-        "getDistrict": "SELECT D_NAME, D_STREET_1, D_STREET_2, D_CITY, D_STATE, D_ZIP FROM DISTRICT WHERE D_W_ID = ? AND D_ID = ?",  # w_id, d_id
-        "updateDistrictBalance": "UPDATE DISTRICT SET D_YTD = D_YTD + ? WHERE D_W_ID  = ? AND D_ID = ?",  # h_amount, d_w_id, d_id
-        "getCustomerByCustomerId": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_STREET_1, C_STREET_2, C_CITY, C_STATE, C_ZIP, C_PHONE, C_SINCE, C_CREDIT, C_CREDIT_LIM, C_DISCOUNT, C_BALANCE, C_YTD_PAYMENT, C_PAYMENT_CNT, C_DATA FROM CUSTOMER WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?",  # w_id, d_id, c_id
-        "getCustomersByLastName": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_STREET_1, C_STREET_2, C_CITY, C_STATE, C_ZIP, C_PHONE, C_SINCE, C_CREDIT, C_CREDIT_LIM, C_DISCOUNT, C_BALANCE, C_YTD_PAYMENT, C_PAYMENT_CNT, C_DATA FROM CUSTOMER WHERE C_W_ID = ? AND C_D_ID = ? AND C_LAST = ? ORDER BY C_FIRST",  # w_id, d_id, c_last
-        "updateBCCustomer": "UPDATE CUSTOMER SET C_BALANCE = ?, C_YTD_PAYMENT = ?, C_PAYMENT_CNT = ?, C_DATA = ? WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?",  # c_balance, c_ytd_payment, c_payment_cnt, c_data, c_w_id, c_d_id, c_id
-        "updateGCCustomer": "UPDATE CUSTOMER SET C_BALANCE = ?, C_YTD_PAYMENT = ?, C_PAYMENT_CNT = ? WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?",  # c_balance, c_ytd_payment, c_payment_cnt, c_w_id, c_d_id, c_id
+        "getWarehouse": "SELECT W_NAME, W_STREET_1, W_STREET_2, W_CITY, W_STATE, W_ZIP FROM WAREHOUSE WHERE W_ID = ?",
+        "updateWarehouseBalance": "UPDATE WAREHOUSE SET W_YTD = W_YTD + ? WHERE W_ID = ?",
+        "getDistrict": "SELECT D_NAME, D_STREET_1, D_STREET_2, D_CITY, D_STATE, D_ZIP FROM DISTRICT WHERE D_W_ID = ? AND D_ID = ?",
+        "updateDistrictBalance": "UPDATE DISTRICT SET D_YTD = D_YTD + ? WHERE D_W_ID  = ? AND D_ID = ?",
+        "getCustomerByCustomerId": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_STREET_1, C_STREET_2, C_CITY, C_STATE, C_ZIP, C_PHONE, C_SINCE, C_CREDIT, C_CREDIT_LIM, C_DISCOUNT, C_BALANCE, C_YTD_PAYMENT, C_PAYMENT_CNT, C_DATA FROM CUSTOMER WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?",
+        "getCustomersByLastName": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_STREET_1, C_STREET_2, C_CITY, C_STATE, C_ZIP, C_PHONE, C_SINCE, C_CREDIT, C_CREDIT_LIM, C_DISCOUNT, C_BALANCE, C_YTD_PAYMENT, C_PAYMENT_CNT, C_DATA FROM CUSTOMER WHERE C_W_ID = ? AND C_D_ID = ? AND C_LAST = ? ORDER BY C_FIRST",
+        "updateBCCustomer": "UPDATE CUSTOMER SET C_BALANCE = ?, C_YTD_PAYMENT = ?, C_PAYMENT_CNT = ?, C_DATA = ? WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?",
+        "updateGCCustomer": "UPDATE CUSTOMER SET C_BALANCE = ?, C_YTD_PAYMENT = ?, C_PAYMENT_CNT = ? WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?",
         "insertHistory": "INSERT INTO HISTORY VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     },
     "STOCK_LEVEL": {
         "getOId": "SELECT D_NEXT_O_ID FROM DISTRICT WHERE D_W_ID = ? AND D_ID = ?",
         "getStockCount": """
-            SELECT COUNT(DISTINCT(OL_I_ID)) FROM ORDER_LINE, STOCK
+            SELECT COUNT(DISTINCT(OL_I_ID)) AS STOCK_COUNT FROM ORDER_LINE, STOCK
             WHERE OL_W_ID = ?
               AND OL_D_ID = ?
               AND OL_O_ID < ?
@@ -103,7 +105,15 @@ class SQLiteDriver(AbstractDriver):
         config_path = os.path.join(
             os.path.dirname(__file__), SQLiteDriver.CONFIG_FILE
         )
-        super(SQLiteDriver, self).load_config(config_path)
+        if os.path.isfile(config_path):
+            super(SQLiteDriver, self).load_config(config_path)
+        return self.config
+
+    def load_config(self, config):
+        if isinstance(config, dict):
+            self.config.update(config)
+        elif isinstance(config, str) and os.path.isfile(config):
+            super(SQLiteDriver, self).load_config(config)
 
         self.database = str(self.config.get("database", "tpcc.db"))
 
@@ -118,8 +128,8 @@ class SQLiteDriver(AbstractDriver):
             assert result == 0, cmd + "\n" + output
 
         self.conn = sqlite3.connect(self.database)
+        self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
-        return self.config
 
     def __init__(self, type, ddl):
         super(SQLiteDriver, self).__init__("sqlite", ddl)
@@ -152,45 +162,41 @@ class SQLiteDriver(AbstractDriver):
         ol_delivery_d = params["ol_delivery_d"]
 
         result = []
-        for d_id in range(1, constants.DISTRICTS_PER_WAREHOUSE + 1):
-            self.cursor.execute(q["getNewOrder"], [d_id, w_id])
-            newOrder = self.cursor.fetchone()
-            if newOrder is None:
-                # No orders for this district: skip it. Note: This must be reported if > 1%
-                continue
-            assert len(newOrder) > 0
-            no_o_id = newOrder[0]
+        with self.conn:
+            for d_id in range(1, constants.DISTRICTS_PER_WAREHOUSE + 1):
+                self.cursor.execute(q["getNewOrder"], (d_id, w_id))
+                newOrder = self.cursor.fetchone()
+                if newOrder is None:
+                    # No orders for this district: skip it. Note: This must be reported if > 1%
+                    continue
+                assert len(newOrder) > 0
+                no_o_id = newOrder[0]
 
-            self.cursor.execute(q["getCId"], [no_o_id, d_id, w_id])
-            c_id = self.cursor.fetchone()[0]
+                self.cursor.execute(q["getCId"], (no_o_id, d_id, w_id))
+                c_id = self.cursor.fetchone()[0]
 
-            self.cursor.execute(q["sumOLAmount"], [no_o_id, d_id, w_id])
-            ol_total = self.cursor.fetchone()[0]
+                self.cursor.execute(q["sumOLAmount"], (no_o_id, d_id, w_id))
+                ol_total = self.cursor.fetchone()[0]
 
-            self.cursor.execute(q["deleteNewOrder"], [d_id, w_id, no_o_id])
-            self.cursor.execute(
-                q["updateOrders"], [o_carrier_id, no_o_id, d_id, w_id]
-            )
-            self.cursor.execute(
-                q["updateOrderLine"], [ol_delivery_d, no_o_id, d_id, w_id]
-            )
+                self.cursor.execute(q["deleteNewOrder"], (d_id, w_id, no_o_id))
+                self.cursor.execute(
+                    q["updateOrders"], (o_carrier_id, no_o_id, d_id, w_id)
+                )
+                self.cursor.execute(
+                    q["updateOrderLine"], (ol_delivery_d, no_o_id, d_id, w_id)
+                )
 
-            # These must be logged in the "result file" according to TPC-C 2.7.2.2 (page 39)
-            # We remove the queued time, completed time, w_id, and o_carrier_id: the client can figure
-            # them out
-            # If there are no order lines, SUM returns null. There should always be order lines.
-            assert (
-                ol_total is not None
-            ), "ol_total is NULL: there are no order lines. This should not happen"
-            assert ol_total > 0.0
+                assert (
+                    ol_total is not None
+                ), "ol_total is NULL: there are no order lines. This should not happen"
+                assert ol_total > 0.0
 
-            self.cursor.execute(
-                q["updateCustomer"], [ol_total, c_id, d_id, w_id]
-            )
+                self.cursor.execute(
+                    q["updateCustomer"], (ol_total, c_id, d_id, w_id)
+                )
 
-            result.append((d_id, no_o_id))
+                result.append((d_id, no_o_id))
 
-        self.conn.commit()
         return result
 
     def do_new_order(self, params):
@@ -379,34 +385,33 @@ class SQLiteDriver(AbstractDriver):
         assert w_id, pformat(params)
         assert d_id, pformat(params)
 
-        if c_id is not None:
-            self.cursor.execute(
-                q["getCustomerByCustomerId"], [w_id, d_id, c_id]
-            )
-            customer = self.cursor.fetchone()
-        else:
-            # Get the midpoint customer's id
-            self.cursor.execute(
-                q["getCustomersByLastName"], [w_id, d_id, c_last]
-            )
-            all_customers = self.cursor.fetchall()
-            assert len(all_customers) > 0
-            namecnt = len(all_customers)
-            index = (namecnt - 1) / 2
-            customer = all_customers[index]
-            c_id = customer[0]
-        assert len(customer) > 0
-        assert c_id is not None
+        with self.conn:
+            if c_id is not None:
+                self.cursor.execute(
+                    q["getCustomerByCustomerId"], (w_id, d_id, c_id)
+                )
+                customer = self.cursor.fetchone()
+            else:
+                self.cursor.execute(
+                    q["getCustomersByLastName"], (w_id, d_id, c_last)
+                )
+                all_customers = self.cursor.fetchall()
+                assert len(all_customers) > 0
+                namecnt = len(all_customers)
+                index = int((namecnt - 1) / 2)
+                customer = all_customers[index]
+                c_id = customer[0]
+            assert len(customer) > 0
+            assert c_id is not None
 
-        self.cursor.execute(q["getLastOrder"], [w_id, d_id, c_id])
-        order = self.cursor.fetchone()
-        if order:
-            self.cursor.execute(q["getOrderLines"], [w_id, d_id, order[0]])
-            orderLines = self.cursor.fetchall()
-        else:
-            orderLines = []
+            self.cursor.execute(q["getLastOrder"], (w_id, d_id, c_id))
+            order = self.cursor.fetchone()
+            if order:
+                self.cursor.execute(q["getOrderLines"], (w_id, d_id, order[0]))
+                orderLines = self.cursor.fetchall()
+            else:
+                orderLines = []
 
-        self.conn.commit()
         return [customer, order, orderLines]
 
     # ----------------------------------------------
@@ -424,82 +429,78 @@ class SQLiteDriver(AbstractDriver):
         c_last = params["c_last"]
         h_date = params["h_date"]
 
-        if c_id is not None:
+        with self.conn:
+            if c_id is not None:
+                self.cursor.execute(
+                    q["getCustomerByCustomerId"], (w_id, d_id, c_id)
+                )
+                customer = self.cursor.fetchone()
+            else:
+                self.cursor.execute(
+                    q["getCustomersByLastName"], (w_id, d_id, c_last)
+                )
+                all_customers = self.cursor.fetchall()
+                assert len(all_customers) > 0
+                namecnt = len(all_customers)
+                index = int((namecnt - 1) / 2)
+                customer = all_customers[index]
+                c_id = customer[0]
+            assert len(customer) > 0
+            c_balance = customer["C_BALANCE"] - h_amount
+            c_ytd_payment = customer["C_YTD_PAYMENT"] + h_amount
+            c_payment_cnt = customer["C_PAYMENT_CNT"] + 1
+            c_data = customer["C_DATA"]
+
+            self.cursor.execute(q["getWarehouse"], (w_id,))
+            warehouse = self.cursor.fetchone()
+
+            self.cursor.execute(q["getDistrict"], (w_id, d_id))
+            district = self.cursor.fetchone()
+
+            self.cursor.execute(q["updateWarehouseBalance"], (h_amount, w_id))
             self.cursor.execute(
-                q["getCustomerByCustomerId"], [w_id, d_id, c_id]
+                q["updateDistrictBalance"], (h_amount, w_id, d_id)
             )
-            customer = self.cursor.fetchone()
-        else:
-            # Get the midpoint customer's id
+
+            if customer["C_CREDIT"] == constants.BAD_CREDIT:
+                newData = " ".join(
+                    map(str, [c_id, c_d_id, c_w_id, d_id, w_id, h_amount])
+                )
+                c_data = newData + "|" + c_data
+                if len(c_data) > constants.MAX_C_DATA:
+                    c_data = c_data[: constants.MAX_C_DATA]
+                self.cursor.execute(
+                    q["updateBCCustomer"],
+                    (
+                        c_balance,
+                        c_ytd_payment,
+                        c_payment_cnt,
+                        c_data,
+                        c_w_id,
+                        c_d_id,
+                        c_id,
+                    ),
+                )
+            else:
+                c_data = ""
+                self.cursor.execute(
+                    q["updateGCCustomer"],
+                    (
+                        c_balance,
+                        c_ytd_payment,
+                        c_payment_cnt,
+                        c_w_id,
+                        c_d_id,
+                        c_id,
+                    ),
+                )
+
+            h_data = "%s    %s" % (warehouse["W_NAME"], district["D_NAME"])
             self.cursor.execute(
-                q["getCustomersByLastName"], [w_id, d_id, c_last]
-            )
-            all_customers = self.cursor.fetchall()
-            assert len(all_customers) > 0
-            namecnt = len(all_customers)
-            index = (namecnt - 1) / 2
-            customer = all_customers[index]
-            c_id = customer[0]
-        assert len(customer) > 0
-        c_balance = customer[14] - h_amount
-        c_ytd_payment = customer[15] + h_amount
-        c_payment_cnt = customer[16] + 1
-        c_data = customer[17]
-
-        self.cursor.execute(q["getWarehouse"], [w_id])
-        warehouse = self.cursor.fetchone()
-
-        self.cursor.execute(q["getDistrict"], [w_id, d_id])
-        district = self.cursor.fetchone()
-
-        self.cursor.execute(q["updateWarehouseBalance"], [h_amount, w_id])
-        self.cursor.execute(q["updateDistrictBalance"], [h_amount, w_id, d_id])
-
-        # Customer Credit Information
-        if customer[11] == constants.BAD_CREDIT:
-            newData = " ".join(
-                map(str, [c_id, c_d_id, c_w_id, d_id, w_id, h_amount])
-            )
-            c_data = newData + "|" + c_data
-            if len(c_data) > constants.MAX_C_DATA:
-                c_data = c_data[: constants.MAX_C_DATA]
-            self.cursor.execute(
-                q["updateBCCustomer"],
-                [
-                    c_balance,
-                    c_ytd_payment,
-                    c_payment_cnt,
-                    c_data,
-                    c_w_id,
-                    c_d_id,
-                    c_id,
-                ],
-            )
-        else:
-            c_data = ""
-            self.cursor.execute(
-                q["updateGCCustomer"],
-                [c_balance, c_ytd_payment, c_payment_cnt, c_w_id, c_d_id, c_id],
+                q["insertHistory"],
+                (c_id, c_d_id, c_w_id, d_id, w_id, h_date, h_amount, h_data),
             )
 
-        # Concatenate w_name, four spaces, d_name
-        h_data = "%s    %s" % (warehouse[0], district[0])
-        # Create the history record
-        self.cursor.execute(
-            q["insertHistory"],
-            [c_id, c_d_id, c_w_id, d_id, w_id, h_date, h_amount, h_data],
-        )
-
-        self.conn.commit()
-
-        # TPC-C 2.5.3.3: Must display the following fields:
-        # W_ID, D_ID, C_ID, C_D_ID, C_W_ID, W_STREET_1, W_STREET_2, W_CITY, W_STATE, W_ZIP,
-        # D_STREET_1, D_STREET_2, D_CITY, D_STATE, D_ZIP, C_FIRST, C_MIDDLE, C_LAST, C_STREET_1,
-        # C_STREET_2, C_CITY, C_STATE, C_ZIP, C_PHONE, C_SINCE, C_CREDIT, C_CREDIT_LIM,
-        # C_DISCOUNT, C_BALANCE, the first 200 characters of C_DATA (only if C_CREDIT = "BC"),
-        # H_AMOUNT, and H_DATE.
-
-        # Hand back all the warehouse, district, and customer data
         return [warehouse, district, customer]
 
     # ----------------------------------------------
