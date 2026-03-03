@@ -75,7 +75,7 @@ python3 py3_tpcc/pytpcc.py --no-load --clients=100 --duration=10 --warehouses=21
 python3 py3_tpcc/pytpcc.py --reset --clients=100 --duration=10 --warehouses=21 --config=mydatabase.config mydatabase --stop-on-error
 ```
 
-(**Note**: For relational SQL drivers like PostgreSQL or GoogleSQL, you may also need to pass the `--ddl` flag with the appropriate schema file, e.g., `--ddl py3_tpcc/tpcc_googlesql.sql` for Spanner)
+(**Note**: For relational SQL drivers like PostgreSQL or GoogleSQL, you may also need to pass the `--ddl` flag with the appropriate schema file, e.g., `--ddl py3_tpcc/sql/tpcc_googlesql.sql` for Spanner)
 
 3. Debugging
 
