@@ -168,9 +168,9 @@ def setup_argument_parser():
         "--ddl",
         type=str,
         default=os.path.realpath(
-            os.path.join(os.path.dirname(__file__), "tpcc.sql")
+            os.path.join(os.path.dirname(__file__), "sql", "tpcc.sql")
         ),
-        help="Path to the TPC-C DDL SQL file. Default: tpcc.sql",
+        help="Path to the TPC-C DDL SQL file. Default: sql/tpcc.sql",
     )
 
     parser.add_argument(
