@@ -48,7 +48,7 @@ def createDriverClass(name):
 
 # loaderFunc
 def loaderFunc(driverClass, scaleParameters, args, config, w_ids, debug):
-    driver = driverClass(args["ddl"])
+    driver = driverClass(args["system"], args["ddl"])
     assert driver is not None
     logging.debug(
         "Starting client execution: %s [warehouses=%d]" % (driver, len(w_ids))
@@ -78,7 +78,7 @@ def loaderFunc(driverClass, scaleParameters, args, config, w_ids, debug):
 
 # executorFunc
 def executorFunc(driverClass, scaleParameters, args, config, debug):
-    driver = driverClass(args["ddl"])
+    driver = driverClass(args["system"], args["ddl"])
     assert driver is not None
     logging.debug("Starting client execution: %s" % driver)
 
@@ -115,7 +115,7 @@ if __name__ == "__channelexec__":
             assert driverClass is not None, (
                 "Failed to find '%s' class" % args["system"]
             )
-            driver = driverClass(args["ddl"])
+            driver = driverClass(args["system"], args["ddl"])
             assert driver is not None, (
                 "Failed to create '%s' driver" % args["system"]
             )
@@ -134,7 +134,7 @@ if __name__ == "__channelexec__":
                 assert driverClass is not None, (
                     "Failed to find '%s' class" % args["system"]
                 )
-                driver = driverClass(args["ddl"])
+                driver = driverClass(args["system"], args["ddl"])
                 assert driver is not None, (
                     "Failed to create '%s' driver" % args["system"]
                 )

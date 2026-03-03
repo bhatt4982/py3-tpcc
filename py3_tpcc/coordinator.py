@@ -203,7 +203,7 @@ if __name__ == "__main__":
     # Create a handle to the target client driver
     driverClass = createDriverClass(args["system"])
     assert driverClass is not None, "Failed to find '%s' class" % args["system"]
-    driver = driverClass(args["ddl"])
+    driver = driverClass(args["system"], args["ddl"])
     assert driver is not None, "Failed to create '%s' driver" % args["system"]
     if args["print_config"]:
         config = driver.make_default_config()

@@ -284,15 +284,18 @@ async def execute_workload(driver, args, scale_parameters) -> Results:
         _executor_func(driver, args, scale_parameters)
         for _ in range(args.clients)
     ]
-    await asyncio.gather(*tasks)
-    return Results()
+    worker_results = await asyncio.gather(*tasks)
+    total_results = Results()
+    for r in worker_results:
+        total_results.append(r)
+    return total_results
 
 
 async def _executor_func(driver, args, scale_parameters):
     logging.debug("Starting client execution: %s" % driver)
     e = Executor(driver, scale_parameters, stop_on_error=args.stop_on_error)
     driver.execute_start()
-    results = e.run(args.duration)
+    results = e.execute(args.duration)
     driver.execute_end()
     return results
 
