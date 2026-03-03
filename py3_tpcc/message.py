@@ -1,7 +1,8 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # -----------------------------------------------------------------------
 # Copyright (C) 2011
-# Andy Pavlo
+# Andy Pavlo & Yang Lu
 # http://www.cs.brown.edu/~pavlo/
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -24,7 +25,16 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
-from py3_tpcc.runtime.executor import Executor
-from py3_tpcc.runtime.loader import Loader
 
-__all__ = ["Loader", "Executor"]
+EMPTY = 0
+CMD_LOAD = 1
+CMD_EXECUTE = 2
+CMD_STOP = 3
+LOAD_COMPLETED = 4
+EXECUTE_COMPLETED = 5
+
+
+class Message:
+    def __init__(self, header=EMPTY, data=None):
+        self.header = header
+        self.data = data

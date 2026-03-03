@@ -1,8 +1,13 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # -----------------------------------------------------------------------
 # Copyright (C) 2011
 # Andy Pavlo
 # http://www.cs.brown.edu/~pavlo/
+#
+# Original Java Version:
+# Copyright (C) 2008
+# Evan Jones
+# Massachusetts Institute of Technology
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -24,7 +29,37 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
-from py3_tpcc.runtime.executor import Executor
-from py3_tpcc.runtime.loader import Loader
+from . import rand
 
-__all__ = ["Loader", "Executor"]
+
+def make_for_load():
+    """Create random NURand constants, appropriate for loading the database."""
+    c_last = rand.number(0, 255)
+    c_id = rand.number(0, 1023)
+    order_line_item_id = rand.number(0, 8191)
+    return NURandC(c_last, c_id, order_line_item_id)
+
+
+def valid_c_run(c_run, c_load):
+    """Returns true if the cRun value is valid for running. See TPC-C 2.1.6.1 (page 20)"""
+    c_delta = abs(c_run - c_load)
+    return 65 <= c_delta <= 119 and c_delta != 96 and c_delta != 112
+
+
+def make_for_run(load_c):
+    """Create random NURand constants for running TPC-C."""
+    c_run = rand.number(0, 255)
+    while not valid_c_run(c_run, load_c.c_last):
+        c_run = rand.number(0, 255)
+    assert valid_c_run(c_run, load_c.c_last)
+
+    c_id = rand.number(0, 1023)
+    order_line_item_id = rand.number(0, 8191)
+    return NURandC(c_run, c_id, order_line_item_id)
+
+
+class NURandC:
+    def __init__(self, c_last, c_id, order_line_item_id):
+        self.c_last = c_last
+        self.c_id = c_id
+        self.order_line_item_id = order_line_item_id
