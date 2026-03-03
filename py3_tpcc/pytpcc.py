@@ -36,14 +36,14 @@ import sys
 import time
 import traceback
 
+# Ensure we can import py3_tpcc when running as a script
+if __name__ == "__main__" and __package__ is None:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from py3_tpcc.results import Results
 from py3_tpcc.runtime.executor import Executor
 from py3_tpcc.runtime.loader import Loader
 from py3_tpcc.scaleparameters import ScaleParameters
-
-# Ensure we can import py3_tpcc when running as a script
-if __name__ == "__main__" and __package__ is None:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import modules to trigger registration
 from py3_tpcc.drivers.registry import get_driver_class, get_drivers
