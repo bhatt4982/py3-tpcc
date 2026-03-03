@@ -37,7 +37,7 @@ pip install -e .
 Install any database-specific dependencies (e.g., for Spanner or PostgreSQL):
 
 ```shell
-pip install python-spanner-driver
+pip install python-mydatabase-driver
 ```
 
 ## Usage
@@ -46,6 +46,9 @@ pip install python-spanner-driver
 You can print out the driver's default configuration dictionary to a file using the --print-config flag:
 
 ```shell
+# For mydatabase
+python3 py3_tpcc/pytpcc.py --print-config mydatabase > mydatabase.config
+
 # For spanner
 python3 py3_tpcc/pytpcc.py --print-config spanner > spanner.config
 ```
@@ -57,19 +60,19 @@ You can control the execution phases using various flags:
 * Only Load Data: Test the data loader first without executing transactions.
 
 ```shell
-python3 py3_tpcc/pytpcc.py --no-execute --clients=100 --duration=10 --warehouses=21 --config=spanner.config spanner --stop-on-error
+python3 py3_tpcc/pytpcc.py --no-execute --clients=100 --duration=10 --warehouses=21 --config=mydatabase.config mydatabase --stop-on-error
 ```
 
 * Execute Tests (No Load): Use data that is already populated in the database.
 
 ```shell
-python3 py3_tpcc/pytpcc.py --no-load --clients=100 --duration=10 --warehouses=21 --config=spanner.config spanner --stop-on-error
+python3 py3_tpcc/pytpcc.py --no-load --clients=100 --duration=10 --warehouses=21 --config=mydatabase.config mydatabase --stop-on-error
 ```
 
 * Full Run (Reset, Load, and Execute):
 
 ```shell
-python3 py3_tpcc/pytpcc.py --reset --clients=100 --duration=10 --warehouses=21 --config=spanner.config spanner --stop-on-error
+python3 py3_tpcc/pytpcc.py --reset --clients=100 --duration=10 --warehouses=21 --config=mydatabase.config mydatabase --stop-on-error
 ```
 
 (**Note**: For relational SQL drivers like PostgreSQL or GoogleSQL, you may also need to pass the `--ddl` flag with the appropriate schema file, e.g., `--ddl py3_tpcc/tpcc_googlesql.sql` for Spanner)
@@ -84,20 +87,18 @@ python3 py3_tpcc/pytpcc.py csv
 
 ### Distributed / Multi-Node Execution
 
-For large-scale testing, this project includes a distributed runner via `coordinator.py`, `worker.py`, and `message.py`.
+For large-scale testing, this project includes a distributed runner. It uses `pytpcc.py` as the unified entry point.
 
-* `py3_tpcc/coordinator.py` acts as the main entry point (replacing `pytpcc.py`).
-
-* Instead of `--clients`, use the `--clientprocs` argument to specify how many worker processes should run on each client node. Example:
+* Pass the `--distributed` flag to switch into distributed execution mode.
+* The `--clients` argument specifies how many worker processes should run on each client node. Example:
 
 ```shell
-
-python3 py3_tpcc/coordinator.py --config mydatabase.config --clientprocs 5 mydatabase
+python3 py3_tpcc/pytpcc.py --config mydatabase.config --distributed --clients 5 mydatabase
 ```
 
 * All client node addresses/IPs and their respective code directories must be specified in your configuration file.
 
-* Dependency: Distributed execution requires the execnet Python module to be installed on each client.
+* Dependency: Distributed execution requires the `execnet` Python module to be installed on each client (`pip install execnet`).
 
 ## Development
 

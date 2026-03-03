@@ -29,26 +29,26 @@
 import argparse
 import asyncio
 import logging
-import multiprocessing
 import os
 import subprocess
 import sys
 import time
-import traceback
 
 # Ensure we can import py3_tpcc when running as a script
 if __name__ == "__main__" and __package__ is None:
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from py3_tpcc.results import Results
-from py3_tpcc.runtime.executor import Executor
-from py3_tpcc.runtime.loader import Loader
-from py3_tpcc.scaleparameters import ScaleParameters
+    sys.path.insert(
+        0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
 
 # Import modules to trigger registration
 from py3_tpcc.drivers.registry import get_driver_class, get_drivers
 import py3_tpcc.drivers.spannerdriver  # noqa: F401
 import py3_tpcc.drivers.sqlitedriver  # noqa: F401
+from py3_tpcc.scaleparameters import ScaleParameters
+from py3_tpcc.strategy import (
+    DistributedExecutionStrategy,
+    LocalExecutionStrategy,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -179,9 +179,15 @@ def setup_argument_parser():
         default=1,
         metavar="N",
         help=(
-            "The number of blocking clients (processes) to fork for "
+            "The number of blocking clients (processes/nodes) to fork for "
             "parallel execution. Default: 1"
         ),
+    )
+
+    parser.add_argument(
+        "--distributed",
+        action="store_true",
+        help=("Runs the benchmark in distributed mode using execnet."),
     )
 
     parser.add_argument(
@@ -232,72 +238,6 @@ def setup_argument_parser():
         sys.exit(1)
 
     return parser.parse_args()
-
-
-async def load_data(driver, args, scale_parameters):
-    assert driver is not None
-    logging.debug("Creating client pool with %d processes" % args.clients)
-    pool = multiprocessing.Pool(args.clients)
-
-    # Split the warehouses into chunks
-    w_ids = [[] for _ in range(args.clients)]
-    for w_id in range(
-        scale_parameters.starting_warehouse,
-        scale_parameters.ending_warehouse + 1,
-    ):
-        idx = w_id % args.clients
-        w_ids[idx].append(w_id)
-
-    loader_results = []
-    for i in range(args.clients):
-        r = pool.apply_async(
-            _loader_func, (driver, scale_parameters, args, w_ids[i])
-        )
-        loader_results.append(r)
-
-    pool.close()
-    logging.debug("Waiting for %d loaders to finish" % args.clients)
-    pool.join()
-
-
-def _loader_func(driver, scale_parameters, args, w_ids):
-    logging.debug(
-        "Starting client execution: %s [warehouses=%d]" % (driver, len(w_ids))
-    )
-    try:
-        need_load_items = 1 in w_ids
-        loader = Loader(driver, scale_parameters, w_ids, need_load_items)
-        driver.load_start()
-        loader.load()
-        driver.load_end()
-    except KeyboardInterrupt:
-        return -1
-    except (Exception, AssertionError) as ex:
-        logging.warn("Failed to load data: %s" % (ex))
-        traceback.print_exc(file=sys.stdout)
-        raise
-
-
-async def execute_workload(driver, args, scale_parameters) -> Results:
-    assert driver is not None
-    tasks = [
-        _executor_func(driver, args, scale_parameters)
-        for _ in range(args.clients)
-    ]
-    worker_results = await asyncio.gather(*tasks)
-    total_results = Results()
-    for r in worker_results:
-        total_results.append(r)
-    return total_results
-
-
-async def _executor_func(driver, args, scale_parameters):
-    logging.debug("Starting client execution: %s" % driver)
-    e = Executor(driver, scale_parameters, stop_on_error=args.stop_on_error)
-    driver.execute_start()
-    results = e.execute(args.duration)
-    driver.execute_end()
-    return results
 
 
 def print_config(driver):
@@ -370,20 +310,29 @@ async def main():
         actual_warehouses,
     )
 
+    if args.distributed:
+        strategy = DistributedExecutionStrategy(
+            driverClass, args, driver.config, scale_parameters
+        )
+    else:
+        strategy = LocalExecutionStrategy(
+            driverClass, args, driver.config, scale_parameters
+        )
+
     # Load Data
     load_time = None
     if not args.no_load:
         logging.info("Loading TPC-C benchmark data using %s" % (driver))
         notifyDSIOfPhaseStart("TPC-C_load")
         load_start = time.time()
-        await load_data(driver, args, scale_parameters)
+        await strategy.load_data()
         load_time = time.time() - load_start
         notifyDSIOfPhaseEnd("TPC-C_load")
 
     # Execute Workload
     if not args.no_execute:
         notifyDSIOfPhaseStart("TPC-C_workload")
-        results = await execute_workload(driver, args, scale_parameters)
+        results = await strategy.execute_workload()
         assert results, (
             "No results from execution for %d client!" % args.clients
         )
