@@ -28,6 +28,8 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
+    "tomli; python_version < '3.11'",
+    "tomli-w",
 ]
 
 [project.optional-dependencies]
