@@ -1,4 +1,4 @@
-import constants
+from py3_tpcc import constants
 
 
 class ScaleParameters:
@@ -42,6 +42,16 @@ class ScaleParameters:
         out += "%d customers/district\n" % self.customers_per_district
         out += "%d initial new orders/district" % self.new_orders_per_district
         return out
+
+    @classmethod
+    def makeDefault(warehouses) -> "ScaleParameters":
+        return ScaleParameters(
+            constants.NUM_ITEMS,
+            warehouses,
+            constants.DISTRICTS_PER_WAREHOUSE,
+            constants.CUSTOMERS_PER_DISTRICT,
+            constants.INITIAL_NEW_ORDERS_PER_DISTRICT,
+        )
 
     @classmethod
     def makeWithScaleFactor(cls, warehouses, scalefactor) -> "ScaleParameters":

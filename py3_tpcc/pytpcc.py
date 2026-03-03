@@ -6,6 +6,7 @@ import asyncio
 import logging
 import multiprocessing
 import os
+import subprocess
 import sys
 import time
 import traceback
@@ -34,10 +35,35 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 
+NOTIFY_PHASE_START_PATH = "/data/workdir/src/flamegraph/notify_phase_start.py"
+NOTIFY_PHASE_END_PATH = "/data/workdir/src/flamegraph/notify_phase_end.py"
+
+
+def notifyDSIOfPhaseStart(phasename):
+    if os.path.isfile(NOTIFY_PHASE_START_PATH):
+        output = subprocess.run(
+            ["python3", NOTIFY_PHASE_START_PATH, phasename], capture_output=True
+        )
+        if output.returncode != 0:
+            raise RuntimeError(
+                "Failed to notify DSI of phase starting:", output
+            )
+
+
+def notifyDSIOfPhaseEnd(phasename):
+    if os.path.isfile(NOTIFY_PHASE_END_PATH):
+        output = subprocess.run(
+            ["python3", NOTIFY_PHASE_END_PATH, phasename], capture_output=True
+        )
+        if output.returncode != 0:
+            raise RuntimeError(
+                "Failed to notify DSI of phase starting:", output
+            )
+
 
 def setup_argument_parser():
     parser = argparse.ArgumentParser(
-        description="Python TPC-C Benchmark Driver"
+        description="Python3 implementation of TPC-C Benchmark..."
     )
 
     # Dynamic choices for positional argument
@@ -71,14 +97,39 @@ def setup_argument_parser():
         "--scalefactor",
         type=float,
         default=1,
+        metavar="SF",
         help="Benchmark scale factor. Default: 1",
     )
 
     parser.add_argument(
+        "--samewh",
+        default=85,
+        type=float,
+        metavar="PP",
+        help="Percent paying same warehouse",
+    )
+
+    parser.add_argument(
         "--warehouses",
-        type=int,
         default=4,
+        type=int,
+        metavar="W",
         help="Number of Warehouses to simulate. Default: 4",
+    )
+
+    parser.add_argument(
+        "--starting-warehouse",
+        default=None,
+        type=int,
+        metavar="SW",
+        help="Starting warehouse ID for loading (optional, defaults to 1)",
+    )
+    parser.add_argument(
+        "--ending-warehouse",
+        default=None,
+        type=int,
+        metavar="EW",
+        help="Ending warehouse ID for loading (optional, defaults to total warehouses)",
     )
 
     parser.add_argument(
@@ -91,7 +142,9 @@ def setup_argument_parser():
     parser.add_argument(
         "--ddl",
         type=str,
-        default="tpcc.sql",
+        default=os.path.realpath(
+            os.path.join(os.path.dirname(__file__), "tpcc.sql")
+        ),
         help="Path to the TPC-C DDL SQL file. Default: tpcc.sql",
     )
 
@@ -99,6 +152,7 @@ def setup_argument_parser():
         "--clients",
         type=int,
         default=1,
+        metavar="N",
         help=(
             "The number of blocking clients (processes) to fork for "
             "parallel execution. Default: 1"
@@ -153,15 +207,6 @@ def setup_argument_parser():
         sys.exit(1)
 
     return parser.parse_args()
-
-
-def create_driver_class(name):
-    full_name = "%sDriver" % name.title()
-    mod = __import__(
-        "drivers.%s" % full_name.lower(), globals(), locals(), [full_name]
-    )
-    klass = getattr(mod, full_name)
-    return klass
 
 
 async def load_data(driver, args, scale_parameters):
@@ -264,19 +309,60 @@ async def main():
     scale_parameters = ScaleParameters.makeWithScaleFactor(
         args.warehouses, args.scalefactor
     )
+
+    # Override starting and ending warehouses if specified
+    if args.starting_warehouse is not None:
+        scale_parameters.starting_warehouse = args.starting_warehouse
+        logging.info(
+            "Using custom starting warehouse: %d", args.starting_warehouse
+        )
+    if args.ending_warehouse is not None:
+        scale_parameters.ending_warehouse = args.ending_warehouse
+        logging.info("Using custom ending warehouse: %d", args.ending_warehouse)
+
+    # Validate warehouse range
+    if scale_parameters.starting_warehouse > scale_parameters.ending_warehouse:
+        logging.error(
+            "Starting warehouse (%d) cannot be greater than ending warehouse (%d)",
+            scale_parameters.starting_warehouse,
+            scale_parameters.ending_warehouse,
+        )
+        sys.exit(1)
+
+    actual_warehouses = (
+        scale_parameters.ending_warehouse
+        - scale_parameters.starting_warehouse
+        + 1
+    )
+
+    logging.info(
+        "Warehouse range for execution: %d to %d (total: %d warehouses)",
+        scale_parameters.starting_warehouse,
+        scale_parameters.ending_warehouse,
+        actual_warehouses,
+    )
+
     # Load Data
     load_time = None
     if not args.no_load:
         logging.info("Loading TPC-C benchmark data using %s" % (driver))
+        notifyDSIOfPhaseStart("TPC-C_load")
         load_start = time.time()
         await load_data(driver, args, scale_parameters)
         load_time = time.time() - load_start
+        notifyDSIOfPhaseEnd("TPC-C_load")
 
     # Execute Workload
     if not args.no_execute:
+        notifyDSIOfPhaseStart("TPC-C_workload")
         results = await execute_workload(driver, args, scale_parameters)
-        assert results
-        print(results.show(load_time))
+        assert results, (
+            "No results from execution for %d client!" % args.clients
+        )
+        notifyDSIOfPhaseEnd("TPC-C_workload")
+        logging.info("Final Results")
+        logging.info("Threads: %d", args.clients)
+        logging.info(results.show(load_time, driver, args.clients, args.samewh))
 
 
 if __name__ == "__main__":
