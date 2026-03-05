@@ -26,6 +26,15 @@
 # -----------------------------------------------------------------------
 
 
+"""
+pytpcc - Python TPC-C Benchmark Runner
+
+This is the main entry point to the Python-implemented TPC-C benchmark.
+It handles parsing of command line arguments, configuration setup, driver
+instantiation, and delegates processing to either localized or distributed
+execution strategies based on User parameters.
+"""
+
 import argparse
 import asyncio
 import logging
@@ -64,7 +73,7 @@ NOTIFY_PHASE_START_PATH = "/data/workdir/src/flamegraph/notify_phase_start.py"
 NOTIFY_PHASE_END_PATH = "/data/workdir/src/flamegraph/notify_phase_end.py"
 
 
-def notifyDSIOfPhaseStart(phasename):
+def notifyDSIOfPhaseStart(phasename: str) -> None:
     if os.path.isfile(NOTIFY_PHASE_START_PATH):
         output = subprocess.run(
             ["python3", NOTIFY_PHASE_START_PATH, phasename], capture_output=True
@@ -75,7 +84,7 @@ def notifyDSIOfPhaseStart(phasename):
             )
 
 
-def notifyDSIOfPhaseEnd(phasename):
+def notifyDSIOfPhaseEnd(phasename: str) -> None:
     if os.path.isfile(NOTIFY_PHASE_END_PATH):
         output = subprocess.run(
             ["python3", NOTIFY_PHASE_END_PATH, phasename], capture_output=True
@@ -86,7 +95,12 @@ def notifyDSIOfPhaseEnd(phasename):
             )
 
 
-def setup_argument_parser():
+def setup_argument_parser() -> argparse.Namespace:
+    """
+    Constructs and returns the command-line argument parser.
+    Configures support for dynamic database system drivers, loading settings,
+    connection properties, scaling properties, and execution options.
+    """
     parser = argparse.ArgumentParser(
         description="Python3 implementation of TPC-C Benchmark..."
     )
@@ -240,12 +254,13 @@ def setup_argument_parser():
     return parser.parse_args()
 
 
-def print_config(driver):
-    print(driver.format_config(driver.config))
-    print()
-
-
-async def main():
+async def main() -> None:
+    """
+    Primary orchestration coroutine.
+    Parses CLI flags, bootstraps the chosen database driver, creates the
+    run strategy, and kicks off table generation/load operations followed
+    by the transactional workload sequence.
+    """
 
     args = setup_argument_parser()
 
@@ -262,21 +277,27 @@ async def main():
     assert driver is not None, "Failed to create '%s' driver" % args.system
 
     # Load default configuration
-    driver.make_default_config()
+    default_config = driver.make_default_config()
 
     # Load Config
     if args.config:
         logger.info(f"Loading configuration from {args.config}")
         driver.load_config(args.config)
+    else:
+        logger.info("Using default configuration")
+        driver.load_config(default_config)
 
     # --print-config: Print Config and exit
     if args.print_config:
-        print_config(driver)
+        driver.print_config()
         sys.exit(0)
+
+    driver.connect()
 
     scale_parameters = ScaleParameters.makeWithScaleFactor(
         args.warehouses, args.scalefactor
     )
+    logger.info(f"Scale Parameters: {scale_parameters}")
 
     # Override starting and ending warehouses if specified
     if args.starting_warehouse is not None:
@@ -312,11 +333,11 @@ async def main():
 
     if args.distributed:
         strategy = DistributedExecutionStrategy(
-            driverClass, args, driver.config, scale_parameters
+            driver, args, driver.config, scale_parameters
         )
     else:
         strategy = LocalExecutionStrategy(
-            driverClass, args, driver.config, scale_parameters
+            driver, args, driver.config, scale_parameters
         )
 
     # Load Data

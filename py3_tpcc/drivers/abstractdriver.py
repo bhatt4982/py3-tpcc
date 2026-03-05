@@ -24,11 +24,21 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
+"""
+Abstract Database Driver Definition
+
+Provides the blueprint (Abstract Base Class) that all specific database
+drivers must implement. It outlines the interface for loading configurations,
+establishing connections, handling DDL schema scripts, and executing the 
+five TPC-C transactions.
+"""
+
 import abc
 from datetime import datetime
 import logging
 import os
 import sys
+from typing import Any, Dict, List, Optional
 
 from py3_tpcc import constants
 
@@ -45,79 +55,78 @@ import tomli_w
 
 
 class AbstractDriver(abc.ABC):
+    """
+    Abstract Base Class for database-specific execution implementations.
+    Defines abstract methods for connections, configuration handling, data 
+    loading, and transactional logic that subclasses must fulfill.
+    """
 
-    def __init__(self, name, ddl):
+    def __init__(self, name: str, ddl: str):
         self.name = name
-        self.driver_name = "%sDriver" % self.name.title()
+        self.driver_name = f"{self.name.title()}Driver"
         self.ddl = ddl
-        self.config = {}
+        self.config: Dict[str, Any] = {}
 
-    def make_default_config(self):
-        raise NotImplementedError(
-            "%s does not implement make_default_config" % (self.driver_name)
-        )
+    @abc.abstractmethod
+    def make_default_config(self) -> Dict[str, Any]:
+        """Generate the default configuration for this driver."""
+        pass
 
-    def load_config(self, filename):
-        if not os.path.isfile(filename):
-            logging.error(f"Config file '{filename}' does not exist")
-            return None
+    @abc.abstractmethod
+    def connect(self) -> None:
+        """Connect to the database."""
+        pass
+    
+    @abc.abstractmethod
+    def reset(self) -> None:
+        """Reset the database."""
+        pass
 
-        with open(filename, "rb") as f:
-            loaded = toml.load(f)
-            if loaded:
-                self.config.update(loaded)
-            return self.config
+    @abc.abstractmethod
+    def load_ddl(self) -> None:
+        """Load the DDL file."""
+        pass
 
-    def format_config(self, config):
-        # Add a header comment manually
-        # since TOML writers usually don't support comments well
-        header = (
-            f"# {self.driver_name} Configuration File\n"
-            f"# Created {datetime.now()}\n\n"
-        )
-        return header + tomli_w.dumps(config)
 
-    def load_start(self):
+    def load_start(self) -> None:
         """Optional callback to indicate to the driver that
         the data loading phase is about to begin."""
-        return None
+        pass
 
-    def load_end(self):
+    def load_end(self) -> None:
         """Optional callback to indicate to the driver that
         the data loading phase is finished."""
-        return None
+        pass
 
-    def execute_start(self):
+    def execute_start(self) -> None:
         """Optional callback before the execution phase starts"""
-        return None
+        pass
 
-    def execute_end(self):
+    def execute_end(self) -> None:
         """Callback after the execution phase finishes"""
-        return None
+        pass
 
-    def load_item_end(self):
+    def load_item_end(self) -> None:
         """Optional callback to indicate to the driver that
         the ITEM data has been passed to the driver."""
-        return None
+        pass
 
-    def load_warehouse_end(self, w_id):
+    def load_warehouse_end(self, w_id: int) -> None:
         """Optional callback to indicate to the driver that
         the data for the given warehouse is finished."""
-        return None
+        pass
 
-    def load_district_end(self, w_id, d_id):
+    def load_district_end(self, w_id: int, d_id: int) -> None:
         """Optional callback to indicate to the driver that
         the data for the given district is finished."""
-        return None
+        pass
 
-    def load_tuples(self, table_name, tuples):
+    @abc.abstractmethod
+    def load_tuples(self, table_name: str, tuples: List[Any]) -> None:
         """Load a list of tuples into the target table"""
-        raise NotImplementedError(
-            "%s does not implement load_tuples" % (self.driver_name)
-        )
-        return None
+        pass
 
-    def execute_transaction(self, txn, params):
+    def execute_transaction(self, txn: str, params: Dict[str, Any]) -> Any:
         """Execute a transaction based on the given name"""
 
         if constants.TransactionTypes.DELIVERY == txn:
@@ -131,21 +140,21 @@ class AbstractDriver(abc.ABC):
         elif constants.TransactionTypes.STOCK_LEVEL == txn:
             result = self.do_stock_level(params)
         else:
-            assert False, "Unexpected TransactionType: " + txn
-        return result
+            assert False, f"Unexpected TransactionType: {txn}"
+        return (result, 0)
 
-    def do_delivery(self, params):
+    @abc.abstractmethod
+    def do_delivery(self, params: Dict[str, Any]) -> Any:
         """Execute DELIVERY Transaction
         Parameters Dict:
             w_id
             o_carrier_id
             ol_delivery_d
         """
-        raise NotImplementedError(
-            "%s does not implement do_delivery" % (self.driver_name)
-        )
+        pass
 
-    def do_new_order(self, params):
+    @abc.abstractmethod
+    def do_new_order(self, params: Dict[str, Any]) -> Any:
         """Execute NEW_ORDER Transaction
         Parameters Dict:
             w_id
@@ -156,11 +165,10 @@ class AbstractDriver(abc.ABC):
             i_w_ids
             i_qtys
         """
-        raise NotImplementedError(
-            "%s does not implement do_new_order" % (self.driver_name)
-        )
+        pass
 
-    def do_order_status(self, params):
+    @abc.abstractmethod
+    def do_order_status(self, params: Dict[str, Any]) -> Any:
         """Execute ORDER_STATUS Transaction
         Parameters Dict:
             w_id
@@ -168,11 +176,10 @@ class AbstractDriver(abc.ABC):
             c_id
             c_last
         """
-        raise NotImplementedError(
-            "%s does not implement do_order_status" % (self.driver_name)
-        )
+        pass
 
-    def do_payment(self, params):
+    @abc.abstractmethod
+    def do_payment(self, params: Dict[str, Any]) -> Any:
         """Execute PAYMENT Transaction
         Parameters Dict:
             w_id
@@ -184,17 +191,59 @@ class AbstractDriver(abc.ABC):
             c_last
             h_date
         """
-        raise NotImplementedError(
-            "%s does not implement do_payment" % (self.driver_name)
-        )
+        pass
 
-    def do_stock_level(self, params):
+    @abc.abstractmethod
+    def do_stock_level(self, params: Dict[str, Any]) -> Any:
         """Execute STOCK_LEVEL Transaction
         Parameters Dict:
             w_id
             d_id
             threshold
         """
-        raise NotImplementedError(
-            "%s does not implement do_stock_level" % (self.driver_name)
+        pass
+
+    def print_config(self) -> None:
+        print(self._format_config(self.config))
+        print()
+
+    def _format_config(self, config: Dict[str, Any]) -> str:
+        # Add a header comment manually
+        # since TOML writers usually don't support comments well
+        header = (
+            f"# {self.driver_name} Configuration File\n"
+            f"# Created {datetime.now()}\n\n"
         )
+        return header + tomli_w.dumps(config)
+
+    def _read_config(self, config_path: str) -> Optional[Dict[str, Any]]:
+        if os.path.isfile(config_path):
+            try:
+                import tomllib as toml
+            except ImportError:
+                import tomli as toml
+            with open(config_path, "rb") as f:
+                return toml.load(f)
+        return {}
+
+    def _load_config(self, config: Any) -> Optional[Dict[str, Any]]:
+        if isinstance(config, dict):
+            if self.name in config:
+                self.config.update(config[self.name])
+            else:
+                self.config.update(config)
+            return self.config
+
+        filename = str(config)
+        if not os.path.isfile(filename):
+            logging.error(f"Config file '{filename}' does not exist")
+            return None
+
+        with open(filename, "rb") as f:
+            loaded = toml.load(f)
+            if loaded:
+                if self.name in loaded:
+                    self.config.update(loaded[self.name])
+                else:
+                    self.config.update(loaded)
+            return self.config

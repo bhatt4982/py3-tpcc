@@ -29,6 +29,12 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
+"""
+Non-Uniform Random Generators
+
+Generates the C-value constants required by the TPC-C specification for Non-Uniform Random (NURand) Number generation equations. Ensures distribution curves conform to the standardized database testing ratios.
+"""
+
 from . import rand
 
 
@@ -59,6 +65,9 @@ def make_for_run(load_c):
 
 
 class NURandC:
+    """
+    Data container holding the random C-value constants governing TPC-C NURand formulations.
+    """
     def __init__(self, c_last, c_id, order_line_item_id):
         self.c_last = c_last
         self.c_id = c_id

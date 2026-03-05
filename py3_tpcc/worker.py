@@ -25,6 +25,15 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
+"""
+Distributed Remote Worker
+
+Entry point for remote nodes deployed via `execnet` to act as distributed
+data loaders or workload executors. It listens to a communication channel
+for serialized commands from the coordinator and dispatches `Loader` or
+`Executor` tasks before pushing results back across the IPC channel.
+"""
+
 import logging
 import pickle
 import sys
@@ -38,6 +47,10 @@ channel = globals().get("channel")  # noqa: F821
 
 # createDriverClass
 def createDriverClass(name):
+    """
+    Dynamically loads and instantiates the proper database driver class
+    based on the name provided in the execution config.
+    """
     full_name = "%sDriver" % name.title()
     mod = __import__(
         "drivers.%s" % full_name.lower(), globals(), locals(), [full_name]
@@ -48,6 +61,10 @@ def createDriverClass(name):
 
 # loaderFunc
 def loaderFunc(driverClass, scaleParameters, args, config, w_ids, debug):
+    """
+    Instantiates the target driver and executes the Data Loader logic to 
+    initialize the assigned warehouses for this specific worker node.
+    """
     driver = driverClass(args["system"], args["ddl"])
     assert driver is not None
     logging.debug(
@@ -78,6 +95,10 @@ def loaderFunc(driverClass, scaleParameters, args, config, w_ids, debug):
 
 # executorFunc
 def executorFunc(driverClass, scaleParameters, args, config, debug):
+    """
+    Instantiates the driver and connects the `Executor` to run a block
+    of runtime transactions before concluding.
+    """
     driver = driverClass(args["system"], args["ddl"])
     assert driver is not None
     logging.debug("Starting client execution: %s" % driver)

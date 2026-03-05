@@ -24,6 +24,13 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
+"""
+TPC-C Data Generation Payload Loader
+
+Handles the procedural generation and insertion of initial dataset values
+for the TPC-C schema tables (ITEM, WAREHOUSE, DISTRICT, STOCK, CUSTOMER, etc).
+"""
+
 from datetime import datetime
 import logging
 from random import shuffle
@@ -33,8 +40,21 @@ from py3_tpcc.util import rand
 
 
 class Loader:
+    """
+    Coordinates the creation and dispatch of pseudo-randomized rows mapped to the 
+    TPC-C transaction bounds according to the targeted scale factor.
+    """
 
     def __init__(self, driver, scale_parameters, w_ids, need_load_items):
+        """
+        Initializes the data loader configuration.
+        
+        Args:
+            driver: Instantiated AbstractDriver for executing data insertion commands.
+            scale_parameters (ScaleParameters): Container tracking data thresholds.
+            w_ids (List[int]): Identifiers of warehouses to build load blocks for.
+            need_load_items (bool): If True, also generate the global ITEM catalogue.
+        """
         self.driver = driver
         self.scale_parameters = scale_parameters
         self.w_ids = w_ids
@@ -48,12 +68,12 @@ class Loader:
         if self.need_load_items:
             logging.debug("Loading ITEM table")
             self.load_items()
-            self.handle.load_endItem()
+            self.driver.load_endItem()
 
         # Then create the warehouse-specific tuples
         for w_id in self.w_ids:
             self.load_warehouse(w_id)
-            self.handle.load_endWarehouse(w_id)
+            self.driver.load_endWarehouse(w_id)
 
         return None
 
@@ -80,7 +100,7 @@ class Loader:
                         self.scale_parameters.items,
                     )
                 )
-                self.handle.load_tuples(constants.TABLENAME_ITEM, tuples)
+                self.driver.load_tuples(constants.TABLENAME_ITEM, tuples)
                 tuples = []
         if len(tuples) > 0:
             logging.debug(
@@ -91,7 +111,7 @@ class Loader:
                     self.scale_parameters.items,
                 )
             )
-            self.handle.load_tuples(constants.TABLENAME_ITEM, tuples)
+            self.driver.load_tuples(constants.TABLENAME_ITEM, tuples)
 
     # load_warehouse
     def load_warehouse(self, w_id):
@@ -102,7 +122,7 @@ class Loader:
 
         # WAREHOUSE
         w_tuples = [self.generate_warehouse(w_id)]
-        self.handle.load_tuples(constants.TABLENAME_WAREHOUSE, w_tuples)
+        self.driver.load_tuples(constants.TABLENAME_WAREHOUSE, w_tuples)
 
         # DISTRICT
         d_tuples = []
@@ -154,10 +174,10 @@ class Loader:
                     constants.MIN_OL_CNT, constants.MAX_OL_CNT
                 )
 
-                # The last new_ordersPerDistrict are new orders
+                # The last new_orders_per_district are new orders
                 new_order = (
                     self.scale_parameters.customers_per_district
-                    - self.scale_parameters.new_ordersPerDistrict
+                    - self.scale_parameters.new_orders_per_district
                 ) < o_id
                 o_tuples.append(
                     self.generate_order(
@@ -187,13 +207,13 @@ class Loader:
                 if new_order:
                     no_tuples.append([o_id, d_id, w_id])
 
-            self.handle.load_tuples(constants.TABLENAME_DISTRICT, d_tuples)
-            self.handle.load_tuples(constants.TABLENAME_CUSTOMER, c_tuples)
-            self.handle.load_tuples(constants.TABLENAME_ORDERS, o_tuples)
-            self.handle.load_tuples(constants.TABLENAME_ORDER_LINE, ol_tuples)
-            self.handle.load_tuples(constants.TABLENAME_NEW_ORDER, no_tuples)
-            self.handle.load_tuples(constants.TABLENAME_HISTORY, h_tuples)
-            self.handle.load_endDistrict(w_id, d_id)
+            self.driver.load_tuples(constants.TABLENAME_DISTRICT, d_tuples)
+            self.driver.load_tuples(constants.TABLENAME_CUSTOMER, c_tuples)
+            self.driver.load_tuples(constants.TABLENAME_ORDERS, o_tuples)
+            self.driver.load_tuples(constants.TABLENAME_ORDER_LINE, ol_tuples)
+            self.driver.load_tuples(constants.TABLENAME_NEW_ORDER, no_tuples)
+            self.driver.load_tuples(constants.TABLENAME_HISTORY, h_tuples)
+            self.driver.load_endDistrict(w_id, d_id)
 
         # Select 10% of the stock to be marked "original"
         s_tuples = []
@@ -214,7 +234,7 @@ class Loader:
                         self.scale_parameters.items,
                     )
                 )
-                self.handle.load_tuples(constants.TABLENAME_STOCK, s_tuples)
+                self.driver.load_tuples(constants.TABLENAME_STOCK, s_tuples)
                 s_tuples = []
             total_tuples += 1
         if len(s_tuples) > 0:
@@ -227,7 +247,7 @@ class Loader:
                     self.scale_parameters.items,
                 )
             )
-            self.handle.load_tuples(constants.TABLENAME_STOCK, s_tuples)
+            self.driver.load_tuples(constants.TABLENAME_STOCK, s_tuples)
 
     # generate_item
     def generate_item(self, id, original):

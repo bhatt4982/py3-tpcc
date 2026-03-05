@@ -26,6 +26,13 @@
 # -----------------------------------------------------------------------
 
 
+"""
+Messaging Constants and Classes
+
+This module defines the messaging protocol for distributed execution
+between the coordinator and workers via execnet.
+"""
+
 EMPTY = 0
 CMD_LOAD = 1
 CMD_EXECUTE = 2
@@ -35,6 +42,17 @@ EXECUTE_COMPLETED = 5
 
 
 class Message:
+    """
+    Represents a message sent to or received from a remote worker.
+    """
+
     def __init__(self, header=EMPTY, data=None):
+        """
+        Initializes a new Message instance.
+
+        Args:
+            header (int): The message command or status header.
+            data (Any): The payload associated with the message.
+        """
         self.header = header
         self.data = data
