@@ -29,6 +29,14 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
+"""
+SQLite TPC-C Database Driver
+
+Implements the `AbstractDriver` interface for the SQLite embedded relational database.
+Handles establishing SQLite connections, executing generated SQL transactions,
+and bootstrapping DDL definitions onto the database structures.
+"""
+
 import logging
 import os
 from pprint import pformat
@@ -101,6 +109,9 @@ TXN_QUERIES = {
 
 @register_driver("sqlite")
 class SQLiteDriver(AbstractDriver):
+    """
+    Concrete implementation of the SQLite database driver targeting local `.db` disk files.
+    """
 
     CONFIG_FILE = "sqlite.toml"
 

@@ -24,6 +24,16 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
+"""
+TPC-C Transaction Executor
+
+Controls the runtime execution phase of the benchmark. It probabilistically
+selects the type of transaction to run (Delivery, New Order, Order Status, 
+Payment, or Stock Level), generates the randomized input parameters required
+by the TPC-C spec, and passes them to the database driver for execution.
+Concurrently logs execution times and aggregates results.
+"""
+
 from datetime import datetime
 import logging
 import sys
@@ -35,10 +45,22 @@ from py3_tpcc.util import rand
 
 
 class Executor:
+    """
+    Manages the transaction generation sequence and aggregates execution results.
+    """
 
     def __init__(
         self, driver, scale_parameters, stop_on_error=False, same_wh=85
     ):
+        """
+        Initializes an execution sequence against the provided driver.
+        
+        Args:
+            driver: Instantiated target database Driver via AbstractDriver.
+            scale_parameters (ScaleParameters): Loaded benchmark parameters.
+            stop_on_error (bool): Halt execution immediately on driver fault.
+            same_wh (int): Percentage chance (0-100) that transactions target a single warehouse.
+        """
         self.driver = driver
         self.scale_parameters = scale_parameters
         self.stop_on_error = stop_on_error

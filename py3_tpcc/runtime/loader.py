@@ -24,6 +24,13 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
+"""
+TPC-C Data Generation Payload Loader
+
+Handles the procedural generation and insertion of initial dataset values
+for the TPC-C schema tables (ITEM, WAREHOUSE, DISTRICT, STOCK, CUSTOMER, etc).
+"""
+
 from datetime import datetime
 import logging
 from random import shuffle
@@ -33,8 +40,21 @@ from py3_tpcc.util import rand
 
 
 class Loader:
+    """
+    Coordinates the creation and dispatch of pseudo-randomized rows mapped to the 
+    TPC-C transaction bounds according to the targeted scale factor.
+    """
 
     def __init__(self, driver, scale_parameters, w_ids, need_load_items):
+        """
+        Initializes the data loader configuration.
+        
+        Args:
+            driver: Instantiated AbstractDriver for executing data insertion commands.
+            scale_parameters (ScaleParameters): Container tracking data thresholds.
+            w_ids (List[int]): Identifiers of warehouses to build load blocks for.
+            need_load_items (bool): If True, also generate the global ITEM catalogue.
+        """
         self.driver = driver
         self.scale_parameters = scale_parameters
         self.w_ids = w_ids

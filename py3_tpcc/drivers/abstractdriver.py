@@ -24,6 +24,15 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
+"""
+Abstract Database Driver Definition
+
+Provides the blueprint (Abstract Base Class) that all specific database
+drivers must implement. It outlines the interface for loading configurations,
+establishing connections, handling DDL schema scripts, and executing the 
+five TPC-C transactions.
+"""
+
 import abc
 from datetime import datetime
 import logging
@@ -46,6 +55,11 @@ import tomli_w
 
 
 class AbstractDriver(abc.ABC):
+    """
+    Abstract Base Class for database-specific execution implementations.
+    Defines abstract methods for connections, configuration handling, data 
+    loading, and transactional logic that subclasses must fulfill.
+    """
 
     def __init__(self, name: str, ddl: str):
         self.name = name

@@ -25,10 +25,23 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
+"""
+Scale Parameters Configuration
+
+Overrides and applies configuration scale modifications (e.g., number of items,
+warehouses, and districts) based on the supplied scale factor, preserving the
+relationships established in the standard TPC-C specification.
+"""
+
 from py3_tpcc import constants
 
 
 class ScaleParameters:
+    """
+    Manages the scale configuration of the TPC-C benchmark execution,
+    allowing variable levels of load by adjusting entity multipliers.
+    """
+
     def __init__(
         self,
         items,
@@ -37,6 +50,16 @@ class ScaleParameters:
         customers_per_district,
         new_orders_per_district,
     ):
+        """
+        Initializes scale parameters, validating constraints against TPC-C spec.
+        
+        Args:
+            items (int): Total number of items.
+            warehouses (int): Total number of active warehouses.
+            districts_per_warehouse (int): Number of districts allocated per warehouse.
+            customers_per_district (int): Number of customers allocated per district.
+            new_orders_per_district (int): Initial volume of new orders per district.
+        """
         assert 1 <= items and items <= constants.NUM_ITEMS
         self.items = items
         assert warehouses > 0
@@ -63,6 +86,9 @@ class ScaleParameters:
         self.ending_warehouse = self.warehouses + self.starting_warehouse - 1
 
     def __str__(self):
+        """
+        Returns a formatted string summary of the scale parameters.
+        """
         out = "%d items\n" % self.items
         out += "%d warehouses\n" % self.warehouses
         out += "%d districts/warehouse\n" % self.districts_per_warehouse
@@ -71,7 +97,16 @@ class ScaleParameters:
         return out
 
     @classmethod
-    def makeDefault(warehouses) -> "ScaleParameters":
+    def makeDefault(cls, warehouses) -> "ScaleParameters":
+        """
+        Generates scale parameters equivalent to the standard baseline 1.0 TPC-C spec.
+        
+        Args:
+            warehouses (int): Number of warehouses scaling applies to.
+            
+        Returns:
+            ScaleParameters: An instantiated scale object.
+        """
         return ScaleParameters(
             constants.NUM_ITEMS,
             warehouses,
@@ -82,6 +117,16 @@ class ScaleParameters:
 
     @classmethod
     def makeWithScaleFactor(cls, warehouses, scalefactor) -> "ScaleParameters":
+        """
+        Generates adjusted scale parameters reduced proportionally by a scaling factor.
+        
+        Args:
+            warehouses (int): The base number of warehouses.
+            scalefactor (float): The multiplier determining data fractional output.
+        
+        Returns:
+            ScaleParameters: An instantiated scale object reflecting the modifications.
+        """
         assert scalefactor >= 1.0
 
         items = int(constants.NUM_ITEMS / scalefactor)
@@ -96,3 +141,4 @@ class ScaleParameters:
         return ScaleParameters(
             items, warehouses, districts, customers, neworders
         )
+

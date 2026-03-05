@@ -1,3 +1,11 @@
+"""
+Execution Strategy Orchestration
+
+Defines the interfaces and orchestration models for dispatching execution
+commands (data loading and transaction running) locally across subprocesses
+or via distributed agent execution using `execnet` and SSH channels.
+"""
+
 try:
     import execnet
 except ImportError:
@@ -25,6 +33,15 @@ class ExecutionStrategy(ABC):
     """
 
     def __init__(self, driver, driver_args, config, scale_parameters):
+        """
+        Initializes the base execution strategy state.
+
+        Args:
+            driver: The instantiated driver class tailored to the specific SQL database backend.
+            driver_args (argparse.Namespace): Arguments passed from the invocation script.
+            config (dict): The resolved configuration parameters mapped from driver initialization.
+            scale_parameters (ScaleParameters): Evaluated scaling rules. 
+        """
         self.driver = driver
         self.args = driver_args
         self.config = config
@@ -32,10 +49,19 @@ class ExecutionStrategy(ABC):
 
     @abstractmethod
     async def load_data(self) -> None:
+        """
+        Signals underlying worker instances (local or distributed) to invoke DataLoader creation routines.
+        """
         pass
 
     @abstractmethod
     async def execute_workload(self) -> Results:
+        """
+        Signals underlying worker instances to invoke Executor transactions and return unified results.
+        
+        Returns:
+            Results: Single collected structure detailing the sum transactions across all nodes.
+        """
         pass
 
 

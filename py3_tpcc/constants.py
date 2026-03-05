@@ -24,6 +24,14 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
+"""
+TPC-C Constants
+
+This module defines the various constants that guide the execution
+of the TPC-C benchmark, including limits on items, warehouses, and
+financial details. It acts as a single source of truth for scale parameters.
+"""
+
 MONEY_DECIMALS = 2
 
 #  Item constants
@@ -149,6 +157,10 @@ ALL_TABLES = [
 
 # Transaction Types
 def enum(*sequential, **named):
+    """
+    Creates an Enum-like class object from sequential and named arguments.
+    Used for mapping transaction types cleanly.
+    """
     enums = dict(map(lambda x: (x, x), sequential))
     # dict(zip(sequential, range(len(sequential))), **named)
     return type("Enum", (), enums)

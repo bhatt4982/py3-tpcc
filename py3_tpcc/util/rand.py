@@ -29,6 +29,14 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # -----------------------------------------------------------------------
 
+"""
+TPC-C Randomized Value Generators
+
+Provides controlled random data generation compliant with the strict rules
+of the TPC-C specification, including non-uniform random distributions,
+fixed-point float generations, and TPC-C specific syllable strings.
+"""
+
 import random
 
 from . import nurand

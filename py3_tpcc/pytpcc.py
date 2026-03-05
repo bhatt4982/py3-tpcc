@@ -26,6 +26,15 @@
 # -----------------------------------------------------------------------
 
 
+"""
+pytpcc - Python TPC-C Benchmark Runner
+
+This is the main entry point to the Python-implemented TPC-C benchmark.
+It handles parsing of command line arguments, configuration setup, driver
+instantiation, and delegates processing to either localized or distributed
+execution strategies based on User parameters.
+"""
+
 import argparse
 import asyncio
 import logging
@@ -87,6 +96,11 @@ def notifyDSIOfPhaseEnd(phasename: str) -> None:
 
 
 def setup_argument_parser() -> argparse.Namespace:
+    """
+    Constructs and returns the command-line argument parser.
+    Configures support for dynamic database system drivers, loading settings,
+    connection properties, scaling properties, and execution options.
+    """
     parser = argparse.ArgumentParser(
         description="Python3 implementation of TPC-C Benchmark..."
     )
@@ -241,6 +255,12 @@ def setup_argument_parser() -> argparse.Namespace:
 
 
 async def main() -> None:
+    """
+    Primary orchestration coroutine.
+    Parses CLI flags, bootstraps the chosen database driver, creates the
+    run strategy, and kicks off table generation/load operations followed
+    by the transactional workload sequence.
+    """
 
     args = setup_argument_parser()
 
