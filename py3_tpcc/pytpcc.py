@@ -51,6 +51,7 @@ if __name__ == "__main__" and __package__ is None:
 
 # Import modules to trigger registration
 from py3_tpcc.drivers.registry import get_driver_class, get_drivers
+import py3_tpcc.drivers.csvdriver  # noqa: F401
 import py3_tpcc.drivers.spannerdriver  # noqa: F401
 import py3_tpcc.drivers.sqlitedriver  # noqa: F401
 from py3_tpcc.scaleparameters import ScaleParameters

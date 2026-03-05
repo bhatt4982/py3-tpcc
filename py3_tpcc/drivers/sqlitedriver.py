@@ -123,19 +123,7 @@ class SQLiteDriver(AbstractDriver):
 
     def load_config(self, config: Any) -> Optional[Dict[str, Any]]:
         super()._load_config(config)
-
         self.database = str(self.config.get("database", "JUNK"))
-
-        # if self.config.get("reset") and os.path.exists(self.database):
-        #     logger.debug(f"Deleting database '{self.database}'")
-        #     os.unlink(self.database)
-
-        # if not os.path.exists(self.database):
-        #     logger.debug(f"Loading DDL file '{self.ddl}'")
-        #     cmd = f"sqlite3 {self.database} < {self.ddl}"
-        #     (result, output) = subprocess.getstatusoutput(cmd)
-        #     assert result == 0, f"{cmd}\n{output}"
-
         return self.config
 
     def connect(self) -> None:

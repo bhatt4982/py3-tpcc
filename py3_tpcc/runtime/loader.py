@@ -68,12 +68,12 @@ class Loader:
         if self.need_load_items:
             logging.debug("Loading ITEM table")
             self.load_items()
-            self.driver.load_endItem()
+            self.driver.load_item_end()
 
         # Then create the warehouse-specific tuples
         for w_id in self.w_ids:
             self.load_warehouse(w_id)
-            self.driver.load_endWarehouse(w_id)
+            self.driver.load_warehouse_end(w_id)
 
         return None
 
@@ -213,7 +213,7 @@ class Loader:
             self.driver.load_tuples(constants.TABLENAME_ORDER_LINE, ol_tuples)
             self.driver.load_tuples(constants.TABLENAME_NEW_ORDER, no_tuples)
             self.driver.load_tuples(constants.TABLENAME_HISTORY, h_tuples)
-            self.driver.load_endDistrict(w_id, d_id)
+            self.driver.load_district_end(w_id, d_id)
 
         # Select 10% of the stock to be marked "original"
         s_tuples = []
