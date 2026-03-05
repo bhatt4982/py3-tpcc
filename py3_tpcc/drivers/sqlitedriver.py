@@ -132,7 +132,7 @@ class SQLiteDriver(AbstractDriver):
         try:
             self.reset()
             self.load_ddl()
-            self.conn = sqlite3.connect(self.database)
+            self.conn = sqlite3.connect(self.database, timeout=60.0)
         except Exception as e:
             raise ConnectionError(f"Failed to connect to database {self.database}: {e}")
 

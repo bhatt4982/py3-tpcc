@@ -277,6 +277,7 @@ async def main() -> None:
     scale_parameters = ScaleParameters.makeWithScaleFactor(
         args.warehouses, args.scalefactor
     )
+    logger.info(f"Scale Parameters: {scale_parameters}")
 
     # Override starting and ending warehouses if specified
     if args.starting_warehouse is not None:
@@ -312,11 +313,11 @@ async def main() -> None:
 
     if args.distributed:
         strategy = DistributedExecutionStrategy(
-            driverClass, args, driver.config, scale_parameters
+            driver, args, driver.config, scale_parameters
         )
     else:
         strategy = LocalExecutionStrategy(
-            driverClass, args, driver.config, scale_parameters
+            driver, args, driver.config, scale_parameters
         )
 
     # Load Data
@@ -329,7 +330,6 @@ async def main() -> None:
         load_time = time.time() - load_start
         notifyDSIOfPhaseEnd("TPC-C_load")
 
-    sys.exit(0)
     # Execute Workload
     if not args.no_execute:
         notifyDSIOfPhaseStart("TPC-C_workload")

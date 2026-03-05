@@ -24,8 +24,8 @@ class ExecutionStrategy(ABC):
     or distributed remote agent execution.
     """
 
-    def __init__(self, driver_class, driver_args, config, scale_parameters):
-        self.driver_class = driver_class
+    def __init__(self, driver, driver_args, config, scale_parameters):
+        self.driver = driver
         self.args = driver_args
         self.config = config
         self.scale_parameters = scale_parameters
@@ -45,16 +45,13 @@ class LocalExecutionStrategy(ExecutionStrategy):
     Initializes a localized thread pool to scale across multiple clients constraints.
     """
 
-    def __init__(self, driver_class, driver_args, config, scale_parameters):
-        super().__init__(driver_class, driver_args, config, scale_parameters)
-        # Instantiate primary driver for the local process
-        self.driver = self.driver_class(self.args.system, self.args.ddl)
-        self.driver.load_config(self.config)
+    def __init__(self, driver, driver_args, config, scale_parameters):
+        super().__init__(driver, driver_args, config, scale_parameters)
 
     async def load_data(self) -> None:
         assert self.driver is not None
-        logging.debug(
-            f"Creating local client pool with {self.args.clients} processes"
+        logging.info(
+            f"Starting local data load with {self.args.clients} processes"
         )
         pool = multiprocessing.Pool(self.args.clients)
 
@@ -80,6 +77,7 @@ class LocalExecutionStrategy(ExecutionStrategy):
             f"Waiting for {self.args.clients} local loaders to finish"
         )
         pool.join()
+        logging.info("Local data load completed")
 
     @staticmethod
     def _loader_func(driver, scale_parameters, args, w_ids):
@@ -90,8 +88,9 @@ class LocalExecutionStrategy(ExecutionStrategy):
             need_load_items = 1 in w_ids
             loader = Loader(driver, scale_parameters, w_ids, need_load_items)
             driver.load_start()
-            loader.load()
+            loader.execute()
             driver.load_end()
+            logging.debug(f"Completed client execution for warehouses: {w_ids}")
         except KeyboardInterrupt:
             return -1
         except (Exception, AssertionError) as ex:
@@ -101,6 +100,7 @@ class LocalExecutionStrategy(ExecutionStrategy):
 
     async def execute_workload(self) -> Results:
         assert self.driver is not None
+        logging.info(f"Executing local workload with {self.args.clients} clients")
         tasks = [
             LocalExecutionStrategy._executor_func(
                 self.driver, self.args, self.scale_parameters
@@ -108,6 +108,7 @@ class LocalExecutionStrategy(ExecutionStrategy):
             for _ in range(self.args.clients)
         ]
         worker_results = await asyncio.gather(*tasks)
+        logging.debug("All worker tasks completed")
         total_results = Results()
         for r in worker_results:
             total_results.append(r)
@@ -120,6 +121,7 @@ class LocalExecutionStrategy(ExecutionStrategy):
         driver.execute_start()
         results = e.execute(args.duration)
         driver.execute_end()
+        logging.debug(f"Finished local client execution: {driver}")
         return results
 
 
@@ -129,8 +131,8 @@ class DistributedExecutionStrategy(ExecutionStrategy):
     Initializes execnet gateways to dispatch processing instructions across remote clients.
     """
 
-    def __init__(self, driver_class, driver_args, config, scale_parameters):
-        super().__init__(driver_class, driver_args, config, scale_parameters)
+    def __init__(self, driver, driver_args, config, scale_parameters):
+        super().__init__(driver, driver_args, config, scale_parameters)
 
         assert (
             execnet is not None
@@ -141,6 +143,7 @@ class DistributedExecutionStrategy(ExecutionStrategy):
         ), "No clients specified in config for distributed execution"
 
         remote_clients = re.split(r"\s+", str(config["clients"]))
+        logging.info(f"Creating distributed execution strategy across nodes: {remote_clients}")
 
         # Create ssh channels to client nodes
         for node in remote_clients:
@@ -175,13 +178,18 @@ class DistributedExecutionStrategy(ExecutionStrategy):
                     w_ids[i],
                 ],
             )
+            logging.debug(f"Sending LOAD command to channel {i}")
             self.channels[i].send(pickle.dumps(m, -1))
 
+        logging.debug("Waiting for remote loads to complete")
         for ch in self.channels:
             ch.receive()
+            
+        logging.info("Distributed data load completed")
 
     async def execute_workload(self) -> Results:
         total_results = Results()
+        logging.info(f"Executing distributed workload across {len(self.channels)} channels")
 
         for ch in self.channels:
             m = message.Message(
@@ -193,5 +201,7 @@ class DistributedExecutionStrategy(ExecutionStrategy):
         for ch in self.channels:
             r = pickle.loads(ch.receive()).data
             total_results.append(r)
+            
+        logging.debug("Received all distributed workload results")
 
         return total_results
