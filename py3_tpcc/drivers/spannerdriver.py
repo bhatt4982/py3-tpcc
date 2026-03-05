@@ -27,52 +27,52 @@ TXN_QUERIES = {
     "DELIVERY": {
         "getNewOrder": "SELECT NO_O_ID FROM NEW_ORDER WHERE NO_D_ID = @d_id AND NO_W_ID = @w_id AND NO_O_ID > -1 LIMIT 1",
         "deleteNewOrder": "DELETE FROM NEW_ORDER WHERE NO_D_ID = @d_id AND NO_W_ID = @w_id AND NO_O_ID = @no_o_id",
-        "getCId": "SELECT O_C_ID FROM ORDERS WHERE O_ID = @no_o_id AND O_D_ID = @d_id AND O_W_ID = @w_id",
-        "updateOrders": "UPDATE ORDERS SET O_CARRIER_ID = @o_carrier_id WHERE O_ID = @no_o_id AND O_D_ID = @d_id AND O_W_ID = @w_id",
-        "updateOrderLine": "UPDATE ORDER_LINE SET OL_DELIVERY_D = @ol_delivery_d WHERE OL_O_ID = @no_o_id AND OL_D_ID = @d_id AND OL_W_ID = @w_id",
-        "sumOLAmount": "SELECT SUM(OL_AMOUNT) FROM ORDER_LINE WHERE OL_O_ID = @no_o_id AND OL_D_ID = @d_id AND OL_W_ID = @w_id",
-        "updateCustomer": "UPDATE CUSTOMER SET C_BALANCE = C_BALANCE + @ol_total WHERE C_ID = @c_id AND C_D_ID = @d_id AND C_W_ID = @w_id",
+        "getCId": "SELECT O_C_ID FROM ORDERS WHERE O_ID = @no_o_id AND D_ID = @d_id AND W_ID = @w_id",
+        "updateOrders": "UPDATE ORDERS SET O_CARRIER_ID = @o_carrier_id WHERE O_ID = @no_o_id AND D_ID = @d_id AND W_ID = @w_id",
+        "updateOrderLine": "UPDATE ORDER_LINE SET OL_DELIVERY_D = @ol_delivery_d WHERE O_ID = @no_o_id AND D_ID = @d_id AND W_ID = @w_id",
+        "sumOLAmount": "SELECT SUM(OL_AMOUNT) FROM ORDER_LINE WHERE O_ID = @no_o_id AND D_ID = @d_id AND W_ID = @w_id",
+        "updateCustomer": "UPDATE CUSTOMER SET C_BALANCE = C_BALANCE + @ol_total WHERE C_ID = @c_id AND D_ID = @d_id AND W_ID = @w_id",
     },
     "NEW_ORDER": {
         "getWarehouseTaxRate": "SELECT W_TAX FROM WAREHOUSE WHERE W_ID = @w_id",
-        "getDistrict": "SELECT D_TAX, D_NEXT_O_ID FROM DISTRICT WHERE D_ID = @d_id AND D_W_ID = @w_id",
-        "incrementNextOrderId": "UPDATE DISTRICT SET D_NEXT_O_ID = @d_next_o_id WHERE D_ID = @d_id AND D_W_ID = @w_id",
-        "getCustomer": "SELECT C_DISCOUNT, C_LAST, C_CREDIT FROM CUSTOMER WHERE C_W_ID = @w_id AND C_D_ID = @d_id AND C_ID = @c_id",
-        "createOrder": "INSERT INTO ORDERS (O_ID, O_D_ID, O_W_ID, O_C_ID, O_ENTRY_D, O_CARRIER_ID, O_OL_CNT, O_ALL_LOCAL) VALUES (@o_id, @d_id, @w_id, @c_id, @o_entry_d, @o_carrier_id, @o_ol_cnt, @o_all_local)",
+        "getDistrict": "SELECT D_TAX, D_NEXT_O_ID FROM DISTRICT WHERE D_ID = @d_id AND W_ID = @w_id",
+        "incrementNextOrderId": "UPDATE DISTRICT SET D_NEXT_O_ID = @d_next_o_id WHERE D_ID = @d_id AND W_ID = @w_id",
+        "getCustomer": "SELECT C_DISCOUNT, C_LAST, C_CREDIT FROM CUSTOMER WHERE W_ID = @w_id AND D_ID = @d_id AND C_ID = @c_id",
+        "createOrder": "INSERT INTO ORDERS (O_ID, D_ID, W_ID, O_C_ID, O_ENTRY_D, O_CARRIER_ID, O_OL_CNT, O_ALL_LOCAL) VALUES (@o_id, @d_id, @w_id, @c_id, @o_entry_d, @o_carrier_id, @o_ol_cnt, @o_all_local)",
         "createNewOrder": "INSERT INTO NEW_ORDER (NO_O_ID, NO_D_ID, NO_W_ID) VALUES (@o_id, @d_id, @w_id)",
         "getItemInfo": "SELECT I_PRICE, I_NAME, I_DATA FROM ITEM WHERE I_ID = @i_id",
-        "getStockInfo": "SELECT S_QUANTITY, S_DATA, S_YTD, S_ORDER_CNT, S_REMOTE_CNT, S_DIST_{:02d} FROM STOCK WHERE S_I_ID = @i_id AND S_W_ID = @w_id",
-        "updateStock": "UPDATE STOCK SET S_QUANTITY = @s_quantity, S_YTD = @s_ytd, S_ORDER_CNT = @s_order_cnt, S_REMOTE_CNT = @s_remote_cnt WHERE S_I_ID = @i_id AND S_W_ID = @w_id",
-        "createOrderLine": "INSERT INTO ORDER_LINE (OL_O_ID, OL_D_ID, OL_W_ID, OL_NUMBER, OL_I_ID, OL_SUPPLY_W_ID, OL_DELIVERY_D, OL_QUANTITY, OL_AMOUNT, OL_DIST_INFO) VALUES (@o_id, @d_id, @w_id, @ol_number, @i_id, @supply_w_id, @o_entry_d, @ol_quantity, @ol_amount, @dist_info)",        
+        "getStockInfo": "SELECT S_QUANTITY, S_DATA, S_YTD, S_ORDER_CNT, S_REMOTE_CNT, S_DIST_{:02d} FROM STOCK WHERE S_I_ID = @i_id AND W_ID = @w_id",
+        "updateStock": "UPDATE STOCK SET S_QUANTITY = @s_quantity, S_YTD = @s_ytd, S_ORDER_CNT = @s_order_cnt, S_REMOTE_CNT = @s_remote_cnt WHERE S_I_ID = @i_id AND W_ID = @w_id",
+        "createOrderLine": "INSERT INTO ORDER_LINE (O_ID, D_ID, W_ID, OL_NUMBER, OL_I_ID, OL_SUPPLY_W_ID, OL_DELIVERY_D, OL_QUANTITY, OL_AMOUNT, OL_DIST_INFO) VALUES (@o_id, @d_id, @w_id, @ol_number, @i_id, @supply_w_id, @o_entry_d, @ol_quantity, @ol_amount, @dist_info)",        
     },
     "ORDER_STATUS": {
-        "getCustomerByCustomerId": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE FROM CUSTOMER WHERE C_W_ID = @w_id AND C_D_ID = @d_id AND C_ID = @c_id",
-        "getCustomersByLastName": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE FROM CUSTOMER WHERE C_W_ID = @w_id AND C_D_ID = @d_id AND C_LAST = @c_last ORDER BY C_FIRST",
-        "getLastOrder": "SELECT O_ID, O_CARRIER_ID, O_ENTRY_D FROM ORDERS WHERE O_W_ID = @w_id AND O_D_ID = @d_id AND O_C_ID = @c_id ORDER BY O_ID DESC LIMIT 1",
-        "getOrderLines": "SELECT OL_SUPPLY_W_ID, OL_I_ID, OL_QUANTITY, OL_AMOUNT, OL_DELIVERY_D FROM ORDER_LINE WHERE OL_W_ID = @w_id AND OL_D_ID = @d_id AND OL_O_ID = @o_id",        
+        "getCustomerByCustomerId": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE FROM CUSTOMER WHERE W_ID = @w_id AND D_ID = @d_id AND C_ID = @c_id",
+        "getCustomersByLastName": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE FROM CUSTOMER WHERE W_ID = @w_id AND D_ID = @d_id AND C_LAST = @c_last ORDER BY C_FIRST",
+        "getLastOrder": "SELECT O_ID, O_CARRIER_ID, O_ENTRY_D FROM ORDERS WHERE W_ID = @w_id AND D_ID = @d_id AND O_C_ID = @c_id ORDER BY O_ID DESC LIMIT 1",
+        "getOrderLines": "SELECT OL_SUPPLY_W_ID, OL_I_ID, OL_QUANTITY, OL_AMOUNT, OL_DELIVERY_D FROM ORDER_LINE WHERE W_ID = @w_id AND D_ID = @d_id AND O_ID = @o_id",        
     },
     "PAYMENT": {
         "getWarehouse": "SELECT W_NAME, W_STREET_1, W_STREET_2, W_CITY, W_STATE, W_ZIP FROM WAREHOUSE WHERE W_ID = @w_id",
         "updateWarehouseBalance": "UPDATE WAREHOUSE SET W_YTD = W_YTD + @h_amount WHERE W_ID = @w_id",
-        "getDistrict": "SELECT D_NAME, D_STREET_1, D_STREET_2, D_CITY, D_STATE, D_ZIP FROM DISTRICT WHERE D_W_ID = @w_id AND D_ID = @d_id",
-        "updateDistrictBalance": "UPDATE DISTRICT SET D_YTD = D_YTD + @h_amount WHERE D_W_ID = @w_id AND D_ID = @d_id",
-        "getCustomerByCustomerId": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_STREET_1, C_STREET_2, C_CITY, C_STATE, C_ZIP, C_PHONE, C_SINCE, C_CREDIT, C_CREDIT_LIM, C_DISCOUNT, C_BALANCE, C_YTD_PAYMENT, C_PAYMENT_CNT, C_DATA FROM CUSTOMER WHERE C_W_ID = @c_w_id AND C_D_ID = @c_d_id AND C_ID = @c_id",
-        "getCustomersByLastName": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_STREET_1, C_STREET_2, C_CITY, C_STATE, C_ZIP, C_PHONE, C_SINCE, C_CREDIT, C_CREDIT_LIM, C_DISCOUNT, C_BALANCE, C_YTD_PAYMENT, C_PAYMENT_CNT, C_DATA FROM CUSTOMER WHERE C_W_ID = @c_w_id AND C_D_ID = @c_d_id AND C_LAST = @c_last ORDER BY C_FIRST",
-        "updateBCCustomer": "UPDATE CUSTOMER SET C_BALANCE = @c_balance, C_YTD_PAYMENT = @c_ytd_payment, C_PAYMENT_CNT = @c_payment_cnt, C_DATA = @c_data WHERE C_W_ID = @c_w_id AND C_D_ID = @c_d_id AND C_ID = @c_id",
-        "updateGCCustomer": "UPDATE CUSTOMER SET C_BALANCE = @c_balance, C_YTD_PAYMENT = @c_ytd_payment, C_PAYMENT_CNT = @c_payment_cnt WHERE C_W_ID = @c_w_id AND C_D_ID = @c_d_id AND C_ID = @c_id",
+        "getDistrict": "SELECT D_NAME, D_STREET_1, D_STREET_2, D_CITY, D_STATE, D_ZIP FROM DISTRICT WHERE W_ID = @w_id AND D_ID = @d_id",
+        "updateDistrictBalance": "UPDATE DISTRICT SET D_YTD = D_YTD + @h_amount WHERE W_ID = @w_id AND D_ID = @d_id",
+        "getCustomerByCustomerId": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_STREET_1, C_STREET_2, C_CITY, C_STATE, C_ZIP, C_PHONE, C_SINCE, C_CREDIT, C_CREDIT_LIM, C_DISCOUNT, C_BALANCE, C_YTD_PAYMENT, C_PAYMENT_CNT, C_DATA FROM CUSTOMER WHERE W_ID = @c_w_id AND D_ID = @c_d_id AND C_ID = @c_id",
+        "getCustomersByLastName": "SELECT C_ID, C_FIRST, C_MIDDLE, C_LAST, C_STREET_1, C_STREET_2, C_CITY, C_STATE, C_ZIP, C_PHONE, C_SINCE, C_CREDIT, C_CREDIT_LIM, C_DISCOUNT, C_BALANCE, C_YTD_PAYMENT, C_PAYMENT_CNT, C_DATA FROM CUSTOMER WHERE W_ID = @c_w_id AND D_ID = @c_d_id AND C_LAST = @c_last ORDER BY C_FIRST",
+        "updateBCCustomer": "UPDATE CUSTOMER SET C_BALANCE = @c_balance, C_YTD_PAYMENT = @c_ytd_payment, C_PAYMENT_CNT = @c_payment_cnt, C_DATA = @c_data WHERE W_ID = @c_w_id AND D_ID = @c_d_id AND C_ID = @c_id",
+        "updateGCCustomer": "UPDATE CUSTOMER SET C_BALANCE = @c_balance, C_YTD_PAYMENT = @c_ytd_payment, C_PAYMENT_CNT = @c_payment_cnt WHERE W_ID = @c_w_id AND D_ID = @c_d_id AND C_ID = @c_id",
         "insertHistory": "INSERT INTO HISTORY (H_C_ID, H_C_D_ID, H_C_W_ID, H_D_ID, H_W_ID, H_DATE, H_AMOUNT, H_DATA) VALUES (@c_id, @c_d_id, @c_w_id, @d_id, @w_id, @h_date, @h_amount, @h_data)",
     },
     "STOCK_LEVEL": {
-        "getOId": "SELECT D_NEXT_O_ID FROM DISTRICT WHERE D_W_ID = @w_id AND D_ID = @d_id", 
+        "getOId": "SELECT D_NEXT_O_ID FROM DISTRICT WHERE W_ID = @w_id AND D_ID = @d_id", 
         "getStockCount": """
             SELECT COUNT(DISTINCT(OL_I_ID)) FROM ORDER_LINE, STOCK
-            WHERE OL_W_ID = @w_id
-              AND OL_D_ID = @d_id
-              AND OL_O_ID < @o_id
-              AND OL_O_ID >= @o_id_minus_20
-              AND S_W_ID = @w_id
-              AND S_I_ID = OL_I_ID
-              AND S_QUANTITY < @threshold
+            WHERE ORDER_LINE.W_ID = @w_id
+              AND ORDER_LINE.D_ID = @d_id
+              AND ORDER_LINE.O_ID < @o_id
+              AND ORDER_LINE.O_ID >= @o_id_minus_20
+              AND STOCK.W_ID = @w_id
+              AND STOCK.S_I_ID = ORDER_LINE.OL_I_ID
+              AND STOCK.S_QUANTITY < @threshold
         """,
     },
 }
@@ -115,7 +115,10 @@ class SpannerDriver(AbstractDriver):
         logger.info(f"Connecting to Spanner: projects/{project_id}/instances/{instance_id}/databases/{database_id}")
         
         try:
-            self.spanner_client = spanner.Client(project=project_id)
+            self.spanner_client = spanner.Client(
+                project=project_id,
+                disable_builtin_metrics=True
+            )
             self.instance = self.spanner_client.instance(instance_id)
             self.database = self.instance.database(database_id)
         except Exception as e:
@@ -148,14 +151,50 @@ class SpannerDriver(AbstractDriver):
         if len(tuples) == 0:
             return
 
+        # Define PyTPCC's default column order generator pattern for Spanner interleaved mapping
+        # PyTPCC loaders yield tuples in the standard TPC-C index order.
+        # This maps the generator positions to the explicit Spanner test-db schema definitions.
+        TPCC_COLUMNS = {
+            constants.TABLENAME_ITEM: ["I_ID", "I_IM_ID", "I_NAME", "I_PRICE", "I_DATA"],
+            constants.TABLENAME_WAREHOUSE: ["W_ID", "W_NAME", "W_STREET_1", "W_STREET_2", "W_CITY", "W_STATE", "W_ZIP", "W_TAX", "W_YTD"],
+            constants.TABLENAME_DISTRICT: ["D_ID", "W_ID", "D_NAME", "D_STREET_1", "D_STREET_2", "D_CITY", "D_STATE", "D_ZIP", "D_TAX", "D_YTD", "D_NEXT_O_ID"],
+            constants.TABLENAME_CUSTOMER: ["C_ID", "D_ID", "W_ID", "C_FIRST", "C_MIDDLE", "C_LAST", "C_STREET_1", "C_STREET_2", "C_CITY", "C_STATE", "C_ZIP", "C_PHONE", "C_SINCE", "C_CREDIT", "C_CREDIT_LIM", "C_DISCOUNT", "C_BALANCE", "C_YTD_PAYMENT", "C_PAYMENT_CNT", "C_DELIVERY_CNT", "C_DATA"],
+            constants.TABLENAME_HISTORY: ["H_C_ID", "H_C_D_ID", "H_C_W_ID", "H_D_ID", "H_W_ID", "H_DATE", "H_AMOUNT", "H_DATA"],
+            constants.TABLENAME_STOCK: ["S_I_ID", "W_ID", "S_QUANTITY", "S_DIST_01", "S_DIST_02", "S_DIST_03", "S_DIST_04", "S_DIST_05", "S_DIST_06", "S_DIST_07", "S_DIST_08", "S_DIST_09", "S_DIST_10", "S_YTD", "S_ORDER_CNT", "S_REMOTE_CNT", "S_DATA"],
+            constants.TABLENAME_ORDERS: ["O_ID", "O_C_ID", "D_ID", "W_ID", "O_ENTRY_D", "O_CARRIER_ID", "O_OL_CNT", "O_ALL_LOCAL"],
+            constants.TABLENAME_NEW_ORDER: ["NO_O_ID", "NO_D_ID", "NO_W_ID"],
+            constants.TABLENAME_ORDER_LINE: ["O_ID", "D_ID", "W_ID", "OL_NUMBER", "OL_I_ID", "OL_SUPPLY_W_ID", "OL_DELIVERY_D", "OL_QUANTITY", "OL_AMOUNT", "OL_DIST_INFO"],
+        }
+        TABLE_MAPPING = {
+            constants.TABLENAME_ITEM: "Item",
+            constants.TABLENAME_WAREHOUSE: "Warehouse",
+            constants.TABLENAME_DISTRICT: "District",
+            constants.TABLENAME_CUSTOMER: "Customer",
+            constants.TABLENAME_HISTORY: "History",
+            constants.TABLENAME_STOCK: "Stock",
+            constants.TABLENAME_ORDERS: "Orders",
+            constants.TABLENAME_NEW_ORDER: "NEW_ORDER",
+            constants.TABLENAME_ORDER_LINE: "OrderLine",
+        }
+        
+        spanner_table_name = TABLE_MAPPING.get(table_name, table_name)
+        
+        columns = TPCC_COLUMNS.get(table_name)
+        if not columns:
+            logger.error(f"Unknown table for mapping: {table_name}")
+            return
+
         # Use Spanner Batch Mutations
-        with self.database.batch() as batch:
-            # Assuming tuples are ordered exactly as the defined schema columns.
-            # Usually PyTPCC guarantees this list order, but Spanner's insert requires column names.
-            # To simplify, we extract columns from the tuple mappings if we knew them.
-            # We will use generic insertion or rely on a helper if columns are explicitly required.
-            pass
-        logger.debug(f"Loaded {len(tuples)} tuples into {table_name}")
+        try:
+            with self.database.batch() as batch:
+                batch.insert(
+                    table=spanner_table_name,
+                    columns=columns,
+                    values=tuples
+                )
+            logger.debug(f"Loaded {len(tuples)} tuples into {spanner_table_name}")
+        except Exception as e:
+            logger.error(f"Failed to batch insert {table_name}: {e}")
 
     def load_finish(self) -> None:
         """Commit changes resulting from data insertion."""
@@ -444,6 +483,8 @@ class SpannerDriver(AbstractDriver):
                 )
                 all_customers = list(c_iter)
                 namecnt = len(all_customers)
+                if namecnt == 0:
+                    raise ValueError(f"No customers found matching C_LAST={c_last} for query C_W_ID={c_w_id}, C_D_ID={c_d_id}. Indicates database holds incomplete or corrupt benchmark data.")
                 index = (namecnt - 1) // 2
                 customer = all_customers[int(index)]
                 c_id = customer[0]
