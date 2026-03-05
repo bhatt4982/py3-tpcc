@@ -240,11 +240,6 @@ def setup_argument_parser() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def print_config(driver) -> None:
-    print(driver.format_config(driver.config))
-    print()
-
-
 async def main() -> None:
 
     args = setup_argument_parser()
@@ -262,17 +257,22 @@ async def main() -> None:
     assert driver is not None, "Failed to create '%s' driver" % args.system
 
     # Load default configuration
-    driver.make_default_config()
+    default_config = driver.make_default_config()
 
     # Load Config
     if args.config:
         logger.info(f"Loading configuration from {args.config}")
         driver.load_config(args.config)
+    else:
+        logger.info("Using default configuration")
+        driver.load_config(default_config)
 
     # --print-config: Print Config and exit
     if args.print_config:
-        print_config(driver)
+        driver.print_config()
         sys.exit(0)
+
+    driver.connect()
 
     scale_parameters = ScaleParameters.makeWithScaleFactor(
         args.warehouses, args.scalefactor
@@ -329,6 +329,7 @@ async def main() -> None:
         load_time = time.time() - load_start
         notifyDSIOfPhaseEnd("TPC-C_load")
 
+    sys.exit(0)
     # Execute Workload
     if not args.no_execute:
         notifyDSIOfPhaseStart("TPC-C_workload")

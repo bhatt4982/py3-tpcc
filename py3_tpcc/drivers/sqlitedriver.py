@@ -40,6 +40,8 @@ from py3_tpcc import constants
 from py3_tpcc.drivers.abstractdriver import AbstractDriver
 from py3_tpcc.drivers.registry import register_driver
 
+logger = logging.getLogger(__name__)
+
 TXN_QUERIES = {
     "DELIVERY": {
         "getNewOrder": (
@@ -106,32 +108,52 @@ class SQLiteDriver(AbstractDriver):
         config_path = os.path.join(
             os.path.dirname(__file__), SQLiteDriver.CONFIG_FILE
         )
-        if os.path.isfile(config_path):
-            super().load_config(config_path)
-        return self.config
+        return self._read_config(config_path)
 
     def load_config(self, config: Any) -> Optional[Dict[str, Any]]:
-        if isinstance(config, dict):
-            self.config.update(config)
-        elif isinstance(config, str) and os.path.isfile(config):
-            super().load_config(config)
+        super()._load_config(config)
 
-        self.database = str(self.config.get("database", "tpcc.db"))
+        self.database = str(self.config.get("database", "JUNK"))
 
-        if self.config.get("reset") and os.path.exists(self.database):
-            logging.debug(f"Deleting database '{self.database}'")
+        # if self.config.get("reset") and os.path.exists(self.database):
+        #     logger.debug(f"Deleting database '{self.database}'")
+        #     os.unlink(self.database)
+
+        # if not os.path.exists(self.database):
+        #     logger.debug(f"Loading DDL file '{self.ddl}'")
+        #     cmd = f"sqlite3 {self.database} < {self.ddl}"
+        #     (result, output) = subprocess.getstatusoutput(cmd)
+        #     assert result == 0, f"{cmd}\n{output}"
+
+        return self.config
+
+    def connect(self) -> None:
+        logger.info("Connecting to database: %s", self.database)
+        try:
+            self.reset()
+            self.load_ddl()
+            self.conn = sqlite3.connect(self.database)
+        except Exception as e:
+            raise ConnectionError(f"Failed to connect to database {self.database}: {e}")
+
+        if not self.conn:
+            raise ConnectionError(f"Connection must be established with database {self.database}")
+        self.conn.row_factory = sqlite3.Row
+        self.cursor = self.conn.cursor()
+    
+    def reset(self) -> None:
+        """Reset the database."""
+        if os.path.exists(self.database):
+            logger.debug(f"Deleting database '{self.database}'")
             os.unlink(self.database)
 
+    def load_ddl(self) -> None:
+        """Load the DDL file."""
         if not os.path.exists(self.database):
-            logging.debug(f"Loading DDL file '{self.ddl}'")
+            logger.debug(f"Loading DDL file '{self.ddl}'")
             cmd = f"sqlite3 {self.database} < {self.ddl}"
             (result, output) = subprocess.getstatusoutput(cmd)
             assert result == 0, f"{cmd}\n{output}"
-
-        self.conn = sqlite3.connect(self.database)
-        self.conn.row_factory = sqlite3.Row
-        self.cursor = self.conn.cursor()
-        return self.config
 
     def __init__(self, name: str, ddl: str):
         super().__init__("sqlite", ddl)
@@ -147,13 +169,13 @@ class SQLiteDriver(AbstractDriver):
         sql = f"INSERT INTO {table_name} VALUES ({','.join(p)})"
         self.cursor.executemany(sql, tuples)
 
-        logging.debug(
+        logger.debug(
             f"Loaded {len(tuples)} tuples for table_name {table_name}"
         )
         return
 
     def load_finish(self) -> None:
-        logging.info("Commiting changes to database")
+        logger.info("Commiting changes to database")
         self.conn.commit()
 
     def do_delivery(self, params: Dict[str, Any]) -> List[Tuple[int, int]]:
@@ -284,7 +306,7 @@ class SQLiteDriver(AbstractDriver):
                     )
                     stockInfo = self.cursor.fetchone()
                     if len(stockInfo) == 0:
-                        logging.warning(
+                        logger.warning(
                             f"No STOCK record for (ol_i_id={ol_i_id}, ol_supply_w_id={ol_supply_w_id})"
                         )
                         continue
@@ -378,12 +400,16 @@ class SQLiteDriver(AbstractDriver):
                     q["getCustomersByLastName"], (w_id, d_id, c_last)
                 )
                 all_customers = self.cursor.fetchall()
-                assert len(all_customers) > 0
+                if not all_customers or len(all_customers) == 0:
+                    self.conn.rollback()
+                    return None
                 namecnt = len(all_customers)
                 index = int((namecnt - 1) / 2)
                 customer = all_customers[index]
                 c_id = customer[0]
-            assert len(customer) > 0
+            if not customer or len(customer) == 0:
+                self.conn.rollback()
+                return None
             assert c_id is not None
 
             self.cursor.execute(q["getLastOrder"], (w_id, d_id, c_id))
@@ -419,12 +445,16 @@ class SQLiteDriver(AbstractDriver):
                     q["getCustomersByLastName"], (w_id, d_id, c_last)
                 )
                 all_customers = self.cursor.fetchall()
-                assert len(all_customers) > 0
+                if not all_customers or len(all_customers) == 0:
+                    self.conn.rollback()
+                    return None
                 namecnt = len(all_customers)
                 index = int((namecnt - 1) / 2)
                 customer = all_customers[index]
                 c_id = customer[0]
-            assert len(customer) > 0
+            if not customer or len(customer) == 0:
+                self.conn.rollback()
+                return None
             c_balance = customer["C_BALANCE"] - h_amount
             c_ytd_payment = customer["C_YTD_PAYMENT"] + h_amount
             c_payment_cnt = customer["C_PAYMENT_CNT"] + 1
@@ -492,7 +522,9 @@ class SQLiteDriver(AbstractDriver):
         with self.conn:
             self.cursor.execute(q["getOId"], [w_id, d_id])
             result = self.cursor.fetchone()
-            assert result
+            if not result or len(result) == 0:
+                self.conn.rollback()
+                return 0
             o_id = result[0]
 
             self.cursor.execute(

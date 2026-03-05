@@ -58,30 +58,21 @@ class AbstractDriver(abc.ABC):
         """Generate the default configuration for this driver."""
         pass
 
-    def load_config(self, config: Any) -> Optional[Dict[str, Any]]:
-        if isinstance(config, dict):
-            self.config.update(config)
-            return self.config
+    @abc.abstractmethod
+    def connect(self) -> None:
+        """Connect to the database."""
+        pass
+    
+    @abc.abstractmethod
+    def reset(self) -> None:
+        """Reset the database."""
+        pass
 
-        filename = str(config)
-        if not os.path.isfile(filename):
-            logging.error(f"Config file '{filename}' does not exist")
-            return None
+    @abc.abstractmethod
+    def load_ddl(self) -> None:
+        """Load the DDL file."""
+        pass
 
-        with open(filename, "rb") as f:
-            loaded = toml.load(f)
-            if loaded:
-                self.config.update(loaded)
-            return self.config
-
-    def format_config(self, config: Dict[str, Any]) -> str:
-        # Add a header comment manually
-        # since TOML writers usually don't support comments well
-        header = (
-            f"# {self.driver_name} Configuration File\n"
-            f"# Created {datetime.now()}\n\n"
-        )
-        return header + tomli_w.dumps(config)
 
     def load_start(self) -> None:
         """Optional callback to indicate to the driver that
@@ -197,3 +188,48 @@ class AbstractDriver(abc.ABC):
             threshold
         """
         pass
+
+    def print_config(self) -> None:
+        print(self._format_config(self.config))
+        print()
+
+    def _format_config(self, config: Dict[str, Any]) -> str:
+        # Add a header comment manually
+        # since TOML writers usually don't support comments well
+        header = (
+            f"# {self.driver_name} Configuration File\n"
+            f"# Created {datetime.now()}\n\n"
+        )
+        return header + tomli_w.dumps(config)
+
+    def _read_config(self, config_path: str) -> Optional[Dict[str, Any]]:
+        if os.path.isfile(config_path):
+            try:
+                import tomllib as toml
+            except ImportError:
+                import tomli as toml
+            with open(config_path, "rb") as f:
+                return toml.load(f)
+        return {}
+
+    def _load_config(self, config: Any) -> Optional[Dict[str, Any]]:
+        if isinstance(config, dict):
+            if self.name in config:
+                self.config.update(config[self.name])
+            else:
+                self.config.update(config)
+            return self.config
+
+        filename = str(config)
+        if not os.path.isfile(filename):
+            logging.error(f"Config file '{filename}' does not exist")
+            return None
+
+        with open(filename, "rb") as f:
+            loaded = toml.load(f)
+            if loaded:
+                if self.name in loaded:
+                    self.config.update(loaded[self.name])
+                else:
+                    self.config.update(loaded)
+            return self.config
