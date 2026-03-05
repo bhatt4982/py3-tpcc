@@ -1,0 +1,5 @@
+[spanner]
+project = "tpcc-project"
+instance = "tpcc-instance"
+database = "tpcc"
+reset = false
